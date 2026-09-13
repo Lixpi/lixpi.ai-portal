@@ -11,7 +11,6 @@ import {
     aiGeneratedVideoNodeSpec,
     aiGeneratedVideoNodeView,
 } from '$src/components/proseMirror/plugins/aiChatThreadPlugin/aiGeneratedVideoNode.ts'
-import AuthService from '$src/services/auth-service.ts'
 
 vi.mock('@lixpi/ui-kit/components/video-controls', () => ({
     createVideoControls: vi.fn(() => ({
@@ -24,11 +23,8 @@ vi.mock('@lixpi/ui-kit/components/video-controls', () => ({
 
 import { createVideoControls } from '@lixpi/ui-kit/components/video-controls'
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: vi.fn(),
-    },
-}))
+const getTokenSilently = vi.fn()
+const auth = { getTokenSilently }
 
 const createVideoNode = (attrs: Record<string, unknown> = {}) => {
     return testSchema.nodes.aiGeneratedVideo.create({
@@ -70,10 +66,10 @@ const createNodeView = (attrs: Record<string, unknown> = {}) => {
         focus: vi.fn(),
     }
 
-    return aiGeneratedVideoNodeView(node, view as any, () => 0)
+    return aiGeneratedVideoNodeView(node, view as any, () => 0, auth)
 }
 
-beforeEach(() => void vi.mocked(AuthService.getTokenSilently).mockReset().mockResolvedValue('token-1'))
+beforeEach(() => void getTokenSilently.mockReset().mockResolvedValue('token-1'))
 
 describe('aiGeneratedVideoNodeSpec', () => {
     it('serializes core video attrs for ProseMirror DOM output', () => {

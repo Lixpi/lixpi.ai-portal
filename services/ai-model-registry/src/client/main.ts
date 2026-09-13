@@ -1,29 +1,28 @@
-// Boot order: mount the shell, then start the router, which resolves the
-// address bar to a route and loads whatever that route needs.
-
-import RouterService from '$src/services/router-service.ts'
+import { createWebClientService } from '@lixpi/web-client-service-factory'
 
 import {
-    mountApp,
-    type AppInstance,
-} from '$src/app.ts'
+    MODEL_PARAMETERS_ROUTE_PATH,
+    routes,
+} from '$src/routes.ts'
+import { createLayout } from '$src/views/layouts/layout.ts'
+import '@lixpi/web-client-service-factory/styles/foundation'
+import '$src/sass/styles.scss'
 
-const initializeApplication = async (): Promise<AppInstance | null> => {
-    try {
-        const target = document.getElementById('app')
+const application = createWebClientService({
+    createView: ({ router }) => createLayout({ router }),
+    onError: error => console.error('Application failed to start', error),
+    routing: {
+        fallbackPath: MODEL_PARAMETERS_ROUTE_PATH,
+        onRouteChange: currentRoute => {
+            const route = routes.find(candidate => candidate.path === currentRoute.path)
+            document.title = route
+                ? `${route.title} · AI Model Registry`
+                : 'AI Model Registry'
+        },
+        routes,
+    },
+})
 
-        if (!target)
-            throw new Error('Application mount target #app not found')
+void application.start()
 
-        const app = mountApp(target)
-        await RouterService.init()
-
-        return app
-    } catch (error) {
-        console.error('Application failed to start', error)
-
-        return null
-    }
-}
-
-void initializeApplication()
+export const shutdownApplication = (): Promise<void> => application.destroy()

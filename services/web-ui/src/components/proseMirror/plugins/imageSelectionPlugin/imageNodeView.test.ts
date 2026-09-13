@@ -12,18 +12,14 @@ import {
 } from 'prosemirror-model'
 import { testSchema } from '$src/components/proseMirror/plugins/testUtils/testSchema.ts'
 import { ImageNodeView } from '$src/components/proseMirror/plugins/imageSelectionPlugin/imageNodeView.ts'
-import AuthService from '$src/services/auth-service.ts'
 import { aiModelsStore } from '$src/stores/aiModelsStore.ts'
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: vi.fn(),
-    },
-}))
+const getTokenSilently = vi.fn()
+const auth = { getTokenSilently }
 
 afterEach(() => void vi.clearAllMocks())
 
-beforeEach(() => void vi.mocked(AuthService.getTokenSilently).mockReset().mockResolvedValue('token-1'))
+beforeEach(() => void getTokenSilently.mockReset().mockResolvedValue('token-1'))
 
 const createImageNode = (overrides: Record<string, unknown> = {}): ProseMirrorNode => {
     return testSchema.nodes.image.create({
@@ -73,6 +69,7 @@ const createImageView = (node: ProseMirrorNode, editable = true, getPos: () => n
     }
 
     const nodeView = new ImageNodeView({
+        auth,
         node,
         view: view as any,
         getPos,
@@ -107,7 +104,7 @@ describe('ImageNodeView — initialization and source resolution', () => {
         }))
 
         await vi.waitFor(() => expect(getImageElement(nodeView).getAttribute('src')).toBe(imageData))
-        expect(AuthService.getTokenSilently).not.toHaveBeenCalled()
+        expect(getTokenSilently).not.toHaveBeenCalled()
     })
 
     it('resolves API image paths through resolveAuthenticatedMediaUrl', async () => {
@@ -119,7 +116,7 @@ describe('ImageNodeView — initialization and source resolution', () => {
         await vi.waitFor(() => expect(getResolvedImageSrc(nodeView)).toContain('token=token-1'))
         expect(getResolvedImageSrc(nodeView)).toContain('/api/images/workspace-1/final-file')
         expect(getImageElement(nodeView).getAttribute('title')).toBeNull()
-        expect(AuthService.getTokenSilently).toHaveBeenCalledTimes(1)
+        expect(getTokenSilently).toHaveBeenCalledTimes(1)
     })
 
     it('updates resolved image source when image node attrs change', async () => {

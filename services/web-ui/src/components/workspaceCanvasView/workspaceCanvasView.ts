@@ -6,12 +6,19 @@ import {
     uploadCanvasAsset,
     importCanvasAssetUrl,
 } from '$src/canvas-adapters/asset-ingest.ts'
+import {
+    type WebClientRouterService,
+} from '@lixpi/web-client-service-factory'
+import {
+    type AuthClientInstance,
+} from '@lixpi/auth-client'
 import { createWorkspaceCanvasHost } from '$src/canvas-adapters/workspace-canvas-host.ts'
-import AssetService from '$src/services/asset-service.ts'
+import {
+    type AssetService,
+} from '$src/services/asset-service.ts'
 import { workspaceStore } from '$src/stores/workspaceStore.ts'
 import { assetsStore } from '$src/stores/assetsStore.ts'
 import { assetDocumentsStore } from '$src/stores/assetDocumentsStore.ts'
-import { routerStore } from '$src/stores/routerStore.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
 import {
     settings,
@@ -26,9 +33,17 @@ export type WorkspaceCanvasViewInstance = {
     destroy: () => void
 }
 
-export const createWorkspaceCanvasView = (): WorkspaceCanvasViewInstance => {
-    const assets = new AssetService()
+export type WorkspaceCanvasViewConfig = {
+    assetService: AssetService
+    auth: AuthClientInstance
+    router: WebClientRouterService
+}
 
+export const createWorkspaceCanvasView = ({
+    assetService,
+    auth,
+    router,
+}: WorkspaceCanvasViewConfig): WorkspaceCanvasViewInstance => {
     return new WorkspaceCanvasSurface(
         {
             panel: settings.rightSidePanel,
@@ -39,7 +54,7 @@ export const createWorkspaceCanvasView = (): WorkspaceCanvasViewInstance => {
         {
             document,
             readSnapshot: () => ({
-                workspaceId: String(routerStore.getData('currentRoute').routeParams.workspaceId ?? ''),
+                workspaceId: String(router.getCurrentRoute().routeParams.workspaceId ?? ''),
                 loadedWorkspaceId: workspaceStore.getData('workspaceId'),
                 organizationId: String(workspaceStore.getData('organizationId') ?? ''),
                 loadingStatus: workspaceStore.getMeta('loadingStatus'),
@@ -48,7 +63,7 @@ export const createWorkspaceCanvasView = (): WorkspaceCanvasViewInstance => {
             }),
             readDocument: (assetId, role) => assetDocumentsStore.get(assetId, role)?.doc,
             subscriptions: [
-                changed => routerStore.subscribe(changed),
+                changed => router.subscribe(changed),
                 changed => workspaceStore.subscribe(changed),
                 changed => assetsStore.subscribe(changed),
                 changed => assetDocumentsStore.subscribe(changed),
@@ -62,19 +77,19 @@ export const createWorkspaceCanvasView = (): WorkspaceCanvasViewInstance => {
                 return sessions.get(workspaceId)
             },
             membership: {
-                attach: request => assets.attach(request),
-                detach: request => assets.detach(request),
+                attach: request => assetService.attach(request),
+                detach: request => assetService.detach(request),
                 now: Date.now,
             },
             ingest: {
-                createDocument: request => assets.create({
+                createDocument: request => assetService.create({
                     ...request,
                     primaryCategory: 'document',
                 }),
-                uploadFile: uploadCanvasAsset,
-                importUrl: importCanvasAssetUrl,
+                uploadFile: request => uploadCanvasAsset(auth, request),
+                importUrl: request => importCanvasAssetUrl(auth, request),
                 refreshAsset: async (assetId, workspaceId) => {
-                    const result = await assets.refresh(assetId, workspaceId)
+                    const result = await assetService.refresh(assetId, workspaceId)
 
                     return 'error' in result ? result : {}
                 },
@@ -83,14 +98,14 @@ export const createWorkspaceCanvasView = (): WorkspaceCanvasViewInstance => {
             now: Date.now,
             publishTransient: (workspaceId, state) => {
                 if (
-                    routerStore.getData('currentRoute').routeParams.workspaceId !== workspaceId
+                    router.getCurrentRoute().routeParams.workspaceId !== workspaceId
                     || workspaceStore.getData('workspaceId') !== workspaceId
                 )
                     return
 
                 workspaceStore.updateCanvasState(state)
             },
-            synchronizeAssets: workspaceId => assets.startWorkspaceSynchronization(workspaceId),
+            synchronizeAssets: workspaceId => assetService.startWorkspaceSynchronization(workspaceId),
             storage: {
                 get: key => localStorage.getItem(key),
                 set: (key, value) => localStorage.setItem(key, value),
@@ -108,7 +123,10 @@ export const createWorkspaceCanvasView = (): WorkspaceCanvasViewInstance => {
             },
             createRenderer: options => createWorkspaceCanvas(
                 options,
-                createWorkspaceCanvasHost(),
+                createWorkspaceCanvasHost({
+                    assetService,
+                    auth,
+                }),
             ),
             reportError: (message, error) => console.error(message, error),
         },

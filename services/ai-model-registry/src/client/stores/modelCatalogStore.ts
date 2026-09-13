@@ -4,7 +4,7 @@
 
 import { LoadingStatus } from '@lixpi/constants'
 
-import { writable } from '$src/stores/nanoStore.ts'
+import { createStore } from '@lixpi/web-client-service-factory'
 
 import {
     type CatalogModel,
@@ -77,9 +77,9 @@ type Data = {
     collapsedProviders: string[]
 }
 
-type ModelCatalogStore = {
-    meta: Meta
-    data: Data
+type ModelCatalogStoreMethods = {
+    setFilters: (values?: Partial<ModelCatalogFilters>) => void
+    toggleProviderCollapsed: (provider: ProviderDirectory) => void
 }
 
 export const modelKey = (model: CatalogModel): string => `${model.provider}/${model.modelId}`
@@ -107,7 +107,10 @@ const writeCollapsedProviders = (providers: string[]): void => {
     }
 }
 
-const initial: ModelCatalogStore = {
+const initialState: {
+    meta: Meta
+    data: Data
+} = {
     meta: {
         loadingStatus: LoadingStatus.idle,
         error: null,
@@ -128,67 +131,36 @@ const initial: ModelCatalogStore = {
     },
 }
 
-const store = writable<ModelCatalogStore>({ ...initial })
-
-export const modelCatalogStore = {
-    ...store,
-    getMeta: (key: keyof Meta | null = null): any => {
-        const state = store.get()
-
-        return key ? state.meta[key] : state.meta
-    },
-    getData: (key: keyof Data | null = null): any => {
-        const state = store.get()
-
-        return key ? state.data[key] : state.data
-    },
-    setMetaValues: (values: Partial<Meta> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                meta: {
-                    ...state.meta,
-                    ...values,
-                },
-            }),
-        ),
-    setDataValues: (values: Partial<Data> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: {
-                    ...state.data,
-                    ...values,
-                },
-            }),
-        ),
-    setFilters: (values: Partial<ModelCatalogFilters> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: {
-                    ...state.data,
-                    filters: {
-                        ...state.data.filters,
-                        ...values,
+export const modelCatalogStore = createStore({
+    initialState,
+    createMethods: (store): ModelCatalogStoreMethods => ({
+        setFilters: (values: Partial<ModelCatalogFilters> = {}): void =>
+            void store.update(
+                state => ({
+                    ...state,
+                    data: {
+                        ...state.data,
+                        filters: {
+                            ...state.data.filters,
+                            ...values,
+                        },
                     },
-                },
-            }),
-        ),
-    toggleProviderCollapsed: (provider: ProviderDirectory): void =>
-        void store.update(state => {
-            const collapsed = state.data.collapsedProviders.includes(provider)
-                ? state.data.collapsedProviders.filter(entry => entry !== provider)
-                : [...state.data.collapsedProviders, provider]
-            writeCollapsedProviders(collapsed)
+                }),
+            ),
+        toggleProviderCollapsed: (provider: ProviderDirectory): void =>
+            void store.update(state => {
+                const collapsed = state.data.collapsedProviders.includes(provider)
+                    ? state.data.collapsedProviders.filter(entry => entry !== provider)
+                    : [...state.data.collapsedProviders, provider]
+                writeCollapsedProviders(collapsed)
 
-            return {
-                ...state,
-                data: {
-                    ...state.data,
-                    collapsedProviders: collapsed,
-                },
-            }
-        }),
-    resetStore: (): void => void store.set({ ...initial }),
-}
+                return {
+                    ...state,
+                    data: {
+                        ...state.data,
+                        collapsedProviders: collapsed,
+                    },
+                }
+            }),
+    }),
+})

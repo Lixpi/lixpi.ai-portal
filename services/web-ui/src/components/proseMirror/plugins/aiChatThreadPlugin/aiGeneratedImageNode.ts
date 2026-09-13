@@ -8,7 +8,9 @@ import {
     buildAssetRenditionPath,
     resolveAuthenticatedMediaUrl,
 } from '$src/utils/mediaUrls.ts'
-import AuthService from '$src/services/auth-service.ts'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 import { settings } from '$src/settings.ts'
 import {
     applyMediaModelBadgeStyleProperties,
@@ -30,6 +32,7 @@ export const aiGeneratedImageNodeView = (
     node: any,
     view: any,
     getPos: () => number | undefined,
+    auth?: AuthTokenProvider,
 ) => {
     const wrapper = html`
         <div className="ai-generated-image-wrapper ai-generated-media-node">
@@ -114,7 +117,7 @@ export const aiGeneratedImageNodeView = (
             {
                 apiBaseUrl: import.meta.env.VITE_API_URL || '',
                 base64MimeType: 'image/png',
-                getAuthToken: () => AuthService.getTokenSilently(),
+                getAuthToken: () => auth?.getTokenSilently() ?? Promise.resolve(false),
             },
         )
 

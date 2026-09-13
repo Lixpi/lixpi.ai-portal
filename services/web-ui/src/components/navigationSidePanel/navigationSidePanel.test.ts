@@ -10,6 +10,10 @@ import {
     LoadingStatus,
     type WorkspaceMeta,
 } from '@lixpi/constants'
+import {
+    createRouterService,
+    type WebClientRouterService,
+} from '@lixpi/web-client-service-factory'
 
 // =============================================================================
 // MOCKED COLLABORATORS
@@ -36,22 +40,6 @@ const mocks = vi.hoisted(() => ({
     }>,
 }))
 
-vi.mock('$src/services/router-service.ts', () => ({
-    default: { navigateTo: mocks.navigateTo },
-}))
-
-vi.mock('$src/services/workspace-service.ts', () => ({
-    default: vi.fn().mockImplementation(function(this: Record<string, unknown>) {
-        this.createWorkspace = mocks.createWorkspace
-        this.deleteWorkspace = mocks.deleteWorkspace
-        this.getWorkspace = mocks.getWorkspace
-    }),
-}))
-
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: { getTokenSilently: mocks.getTokenSilently },
-}))
-
 // The dropdown is a fully separate, already-tested component. NavigationSidePanel's
 // own responsibility is *what it configures the dropdown with* (options, onSelect
 // routing) — that's what these tests exercise, via the captured config.
@@ -76,14 +64,12 @@ import {
 } from '$src/components/navigationSidePanel/navigationSidePanel.ts'
 import { workspacesStore } from '$src/stores/workspacesStore.ts'
 import { workspaceStore } from '$src/stores/workspaceStore.ts'
-import { routerStore } from '$src/stores/routerStore.ts'
+import { createAuthStore } from '@lixpi/auth-client'
 import { servicesStore } from '$src/stores/servicesStore.ts'
-import { authStore } from '$src/stores/authStore.ts'
-import {
-    navigationSidePanelStore,
-    userInfoPanelStore,
-} from '$src/stores/navigationSidePanelStore.ts'
+import { navigationSidePanelStore } from '$src/stores/navigationSidePanelStore.ts'
 import { settings } from '$src/settings.ts'
+
+const USER_PORTAL_URL = 'https://user-portal.example.test'
 
 const makeWorkspace = (overrides: Partial<WorkspaceMeta> & { tags?: string[] } = {}): WorkspaceMeta => {
     return {
@@ -96,12 +82,16 @@ const makeWorkspace = (overrides: Partial<WorkspaceMeta> & { tags?: string[] } =
 }
 
 const setCurrentWorkspaceId = (workspaceId: string | undefined): void => {
-    routerStore.setDataValues({
-        currentRoute: {
-            ...routerStore.getData('currentRoute'),
-            routeParams: workspaceId ? { workspaceId } : {},
-        },
+    router.navigateTo('/workspace/:workspaceId', {
+        params: workspaceId ? { workspaceId } : {},
+        shouldFetchData: false,
     })
+}
+
+const authStore = createAuthStore()
+const auth = {
+    authStore,
+    getTokenSilently: mocks.getTokenSilently,
 }
 
 const mount = (): {
@@ -110,7 +100,13 @@ const mount = (): {
 } => {
     const paneEl = document.createElement('div')
     document.body.appendChild(paneEl)
-    const instance = createNavigationSidePanel({ paneEl })
+    const instance = createNavigationSidePanel({
+        auth,
+        paneEl,
+        router,
+        userPortalUrl: USER_PORTAL_URL,
+        workspaceService,
+    })
 
     return {
         paneEl,
@@ -136,6 +132,13 @@ const liveDropdownFor = (workspaceId: string) => {
 const dropdownConfigFor = (workspaceId: string) => liveDropdownFor(workspaceId).config
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn> | null = null
+let router: WebClientRouterService
+
+const workspaceService = {
+    createWorkspace: mocks.createWorkspace,
+    deleteWorkspace: mocks.deleteWorkspace,
+    getWorkspace: mocks.getWorkspace,
+}
 
 beforeEach(() => {
     mocks.dropdownInstances.length = 0
@@ -148,14 +151,24 @@ beforeEach(() => {
 
     workspacesStore.resetStore()
     workspaceStore.resetStore()
-    routerStore.resetStore()
     servicesStore.resetStore()
     authStore.resetStore()
     navigationSidePanelStore.resetStore()
-    userInfoPanelStore.set(false)
 
     servicesStore.setDataValues({
         assetService: { loadWorkspaceAssets: mocks.loadWorkspaceAssets },
+    })
+
+    router = createRouterService({
+        routes: [
+            { path: '/' },
+            { path: '/workspace/:workspaceId' },
+        ],
+    })
+    const navigateTo = router.navigateTo.bind(router)
+    vi.spyOn(router, 'navigateTo').mockImplementation((path, options) => {
+        mocks.navigateTo(path, options)
+        navigateTo(path, options)
     })
 
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -163,6 +176,7 @@ beforeEach(() => {
 
 afterEach(() => {
     document.body.innerHTML = ''
+    router.destroy()
     consoleErrorSpy?.mockRestore()
     consoleErrorSpy = null
 })
@@ -324,16 +338,16 @@ describe('NavigationSidePanel — avatar', () => {
         instance.destroy()
     })
 
-    it('opens the account/user-info panel when the avatar is clicked', () => {
+    it('opens the configured user portal in a new tab', () => {
         const {
             paneEl,
             instance,
         } = mount()
-        expect(userInfoPanelStore.get()).toBe(false)
+        const avatar = paneEl.querySelector<HTMLAnchorElement>('.navigation-side-panel-avatar')
 
-        paneEl.querySelector<HTMLElement>('.navigation-side-panel-avatar')?.click()
-
-        expect(userInfoPanelStore.get()).toBe(true)
+        expect(avatar?.href).toBe(`${USER_PORTAL_URL}/`)
+        expect(avatar?.target).toBe('_blank')
+        expect(avatar?.rel).toBe('noopener noreferrer')
 
         instance.destroy()
     })
@@ -411,7 +425,7 @@ describe('NavigationSidePanel — workspace list', () => {
         instance.destroy()
     })
 
-    it('re-renders the list (updating the active row) when the router store changes after mount', () => {
+    it('re-renders the list when the active router workspace changes after mount', () => {
         workspacesStore.setWorkspaces([makeWorkspace({
             workspaceId: 'ws-1',
             name: 'Alpha',

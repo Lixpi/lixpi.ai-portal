@@ -9,7 +9,18 @@ import {
     type DockerImageLocalResult,
 } from '../helpers/docker/build-helpers.ts'
 
-export type WebUIArgs = {
+export type WebClientEnvironment = {
+    VITE_API_URL: string
+    VITE_AUTH0_LOGIN_URL: string
+    VITE_AUTH0_DOMAIN: string
+    VITE_AUTH0_CLIENT_ID: string
+    VITE_AUTH0_AUDIENCE: string
+    VITE_AUTH0_REDIRECT_URI: string
+    VITE_USER_PORTAL_URL: string
+    VITE_NATS_SERVER: string
+}
+
+export type StaticWebClientArgs = {
     // Organization and environment
     orgName: string
     stage: string
@@ -21,22 +32,24 @@ export type WebUIArgs = {
     certificateArn: pulumi.Input<string>
 
     // Web UI configuration
-    environment: {
-        VITE_API_URL: string
-        VITE_AUTH0_LOGIN_URL: string
-        VITE_AUTH0_DOMAIN: string
-        VITE_AUTH0_CLIENT_ID: string
-        VITE_AUTH0_AUDIENCE: string
-        VITE_AUTH0_REDIRECT_URI: string
-        VITE_NATS_SERVER: string
-    }
+    environment: WebClientEnvironment
 
     // Optional configuration
     dockerBuildContext: string
     dockerfilePath: string
+    serviceName: string
+    aliases: string[]
+    buildDirectory: string
+    builderContainerName: string
+    bucketNameSegment: string
 }
 
-export const createWebUI = async (args: WebUIArgs) => {
+export type WebUIArgs = Omit<
+    StaticWebClientArgs,
+    'aliases' | 'buildDirectory' | 'builderContainerName' | 'bucketNameSegment' | 'serviceName'
+>
+
+export const createStaticWebClient = async (args: StaticWebClientArgs) => {
     const {
         orgName,
         stage,
@@ -47,13 +60,14 @@ export const createWebUI = async (args: WebUIArgs) => {
         environment,
         dockerBuildContext,
         dockerfilePath,
+        serviceName,
+        aliases,
+        buildDirectory,
+        builderContainerName,
+        bucketNameSegment,
     } = args
 
-    // Always create www domain regardless of stage
-    const wwwDomainName = `www.${domainName}`
-
     // Resource naming
-    const serviceName = 'web-ui'
     const formattedServiceName = formatStageResourceName(
         serviceName,
         orgName,
@@ -64,7 +78,7 @@ export const createWebUI = async (args: WebUIArgs) => {
     const siteBucket = new aws.s3.Bucket(
         `${formattedServiceName}-bucket`,
         {
-            bucket: `${orgName}-${serviceName}-${domainName}-cloudfront-distribution`.toLowerCase(),
+            bucket: `${orgName}-${bucketNameSegment}-${domainName}-cloudfront-distribution`.toLowerCase(),
             acl: 'private', // CloudFront will handle access, so keep this private
             website: {
                 indexDocument: 'index.html',
@@ -141,14 +155,14 @@ export const createWebUI = async (args: WebUIArgs) => {
 
     // Run a container to build the site, and extract the build artifacts
     const buildCommand = pulumi.interpolate`
-        docker stop web-ui-builder >/dev/null 2>&1 || true && \
-        docker rm web-ui-builder >/dev/null 2>&1 || true && \
-        docker run -d --name web-ui-builder ${envVars} ${webUIImageTag} tail -f /dev/null && \
-        docker exec web-ui-builder pnpm run build && \
-        mkdir -p ./dist && \
-        docker cp web-ui-builder:/usr/src/service/dist/. ./dist/ && \
-        docker stop web-ui-builder && \
-        docker rm web-ui-builder
+        docker stop ${builderContainerName} >/dev/null 2>&1 || true && \
+        docker rm ${builderContainerName} >/dev/null 2>&1 || true && \
+        docker run -d --name ${builderContainerName} ${envVars} ${webUIImageTag} tail -f /dev/null && \
+        docker exec ${builderContainerName} pnpm run build && \
+        mkdir -p ${buildDirectory} && \
+        docker cp ${builderContainerName}:/usr/src/service/dist/. ${buildDirectory}/ && \
+        docker stop ${builderContainerName} && \
+        docker rm ${builderContainerName}
     `
 
     // Run the build command
@@ -170,7 +184,7 @@ export const createWebUI = async (args: WebUIArgs) => {
 
     // Upload the built assets to S3 using aws cli sync
     const s3SyncCommand = pulumi.interpolate`
-        aws s3 sync ./dist s3://${siteBucket.bucket} --delete
+        aws s3 sync ${buildDirectory} s3://${siteBucket.bucket} --delete
     `
     const uploadExec = new Command(
         `${formattedServiceName}-upload-exec`,
@@ -254,8 +268,7 @@ export const createWebUI = async (args: WebUIArgs) => {
                 },
             ],
     
-            // Aliases (domain names) - always include both primary and www
-            aliases: [domainName, wwwDomainName],
+            aliases,
     
             // Wait for invalidation to complete
             waitForDeployment: true,
@@ -291,10 +304,29 @@ export const createWebUI = async (args: WebUIArgs) => {
         outputs: {
             websiteUrl: pulumi.interpolate`https://${domainName}`,
             domainName,
-            wwwDomainName,
             distributionId: distribution.id,
             distributionDomainName: distribution.domainName,
             distributionHostedZoneId: distribution.hostedZoneId, // Add hosted zone ID for alias record
+        },
+    }
+}
+
+export const createWebUI = async (args: WebUIArgs) => {
+    const wwwDomainName = `www.${args.domainName}`
+    const webUI = await createStaticWebClient({
+        ...args,
+        serviceName: 'web-ui',
+        aliases: [args.domainName, wwwDomainName],
+        buildDirectory: './dist/web-ui',
+        builderContainerName: 'web-ui-builder',
+        bucketNameSegment: 'web-ui',
+    })
+
+    return {
+        ...webUI,
+        outputs: {
+            ...webUI.outputs,
+            wwwDomainName,
         },
     }
 }

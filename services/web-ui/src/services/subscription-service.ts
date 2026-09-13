@@ -4,7 +4,6 @@ import {
 } from '@lixpi/constants'
 
 import { subscriptionStore } from '$src/stores/subscriptionStore.ts'
-import { userStore } from '$src/stores/userStore.ts'
 
 const { USER_SUBSCRIPTION_SUBJECTS } = NATS_SUBJECTS
 

@@ -50,12 +50,17 @@ services:
             - ./services/web-ui/src:/usr/src/repository/services/web-ui/src:cached
             - ./services/web-ui/vite.config.ts:/usr/src/repository/services/web-ui/vite.config.ts:cached
             - ./services/web-ui/vitest.config.ts:/usr/src/repository/services/web-ui/vitest.config.ts:cached
+            - ./services/web-ui-user-portal/index.html:/usr/src/repository/services/web-ui-user-portal/index.html:cached
+            - ./services/web-ui-user-portal/src:/usr/src/repository/services/web-ui-user-portal/src:cached
+            - ./services/web-ui-user-portal/vite.config.ts:/usr/src/repository/services/web-ui-user-portal/vite.config.ts:cached
+            - ./services/web-ui-user-portal/vitest.config.ts:/usr/src/repository/services/web-ui-user-portal/vitest.config.ts:cached
             - ./services/api/src:/usr/src/repository/services/api/src:cached
             - ./services/api/vitest.config.ts:/usr/src/repository/services/api/vitest.config.ts:cached
             - ./services/nex/workloads:/usr/src/repository/services/nex/workloads:cached
             - ./services/nex/vitest.config.ts:/usr/src/repository/services/nex/vitest.config.ts:cached
             - ./services/ai-model-registry/src:/usr/src/repository/services/ai-model-registry/src:cached
             - ./services/ai-model-registry/vite.config.ts:/usr/src/repository/services/ai-model-registry/vite.config.ts:cached
+            - ./services/ai-model-registry/vitest.config.ts:/usr/src/repository/services/ai-model-registry/vitest.config.ts:cached
             - ./documentation/site/assets:/usr/src/repository/documentation/site/assets:cached
             - ./infrastructure/init-script/setup-env.ts:/usr/src/repository/infrastructure/init-script/setup-env.ts:cached
             - ./infrastructure/pulumi/src:/usr/src/repository/infrastructure/pulumi/src:cached
@@ -86,6 +91,9 @@ services:
             - ./packages/lixpi/ui-kit-gentelella/src:/usr/src/repository/packages/lixpi/ui-kit-gentelella/src:cached
             - ./packages/lixpi/ui-kit-gentelella/styles:/usr/src/repository/packages/lixpi/ui-kit-gentelella/styles:cached
             - ./packages/lixpi/ui-primitives/src:/usr/src/repository/packages/lixpi/ui-primitives/src:cached
+            - ./packages/lixpi/auth-client/src:/usr/src/repository/packages/lixpi/auth-client/src:cached
+            - ./packages/lixpi/web-client-service-factory/src:/usr/src/repository/packages/lixpi/web-client-service-factory/src:cached
+            - ./packages/lixpi/web-client-service-factory/styles:/usr/src/repository/packages/lixpi/web-client-service-factory/styles:cached
         working_dir: /usr/src/repository
 
 volumes:

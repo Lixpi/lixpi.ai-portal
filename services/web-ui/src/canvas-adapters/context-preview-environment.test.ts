@@ -5,14 +5,14 @@ import {
     it,
     vi,
 } from 'vitest'
-import AuthService from '$src/services/auth-service.ts'
 import { createContextPreviewEnvironment } from './context-preview-environment.ts'
 
-vi.mock('$src/services/auth-service.ts', () => ({ default: { getTokenSilently: vi.fn(async () => 'a/b ?c') } }))
+const getTokenSilently = vi.fn(async () => 'a/b ?c')
+const auth = { getTokenSilently }
 afterEach(() => vi.clearAllMocks())
 
 const fixture = () => {
-    return createContextPreviewEnvironment({
+    return createContextPreviewEnvironment(auth, {
         document,
         getDocuments: () => [],
         getThreads: () => [],
@@ -33,7 +33,7 @@ describe('context preview infrastructure adapter', () => {
         const lifetime = new AbortController()
         lifetime.abort()
         expect(await fixture().resolveRenditionUrl('a', 'preview', lifetime.signal)).toBe('')
-        expect(AuthService.getTokenSilently).not.toHaveBeenCalled()
+        expect(getTokenSilently).not.toHaveBeenCalled()
     })
 
     it('uses application document extraction and preserves paragraph separation and malformed-input handling', () => {

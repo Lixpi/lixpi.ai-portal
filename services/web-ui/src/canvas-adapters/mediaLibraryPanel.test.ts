@@ -112,7 +112,7 @@ describe('Media Library panel contract', () => {
     })
 
     it('supplies URL import and captured workspace ports to the package workflow', () => {
-        expectSourceToContain(workspaceCanvasViewSource, 'importUrl: importCanvasAssetUrl,')
+        expectSourceToContain(workspaceCanvasViewSource, 'importUrl: request => importCanvasAssetUrl(auth, request),')
         expectSourceToContain(workspaceCanvasViewSource, 'readScope: () =>')
         expectSourceToContain(workspaceCanvasViewSource, 'this.isLoaded() && this.renderer && this.canvasState')
         expectSourceToContain(workspaceCanvasViewSource, 'importUrl: url => this.actions.importUrl(url)')

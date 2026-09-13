@@ -7,6 +7,17 @@ import { createDefaultPromptControlFactories } from '$src/components/proseMirror
 import { mountReadOnlyAiChatThreadProjection } from '$src/components/proseMirror/readOnlyAiChatThreadRenderer.ts'
 import { createCanvasConversationEditorPort } from './conversation-editor.ts'
 import { createPromptComposerEditorPort } from './prompt-composer-editor.ts'
+import {
+    type AuthClientInstance,
+} from '@lixpi/auth-client'
+import {
+    type AssetService,
+} from '$src/services/asset-service.ts'
+
+export type WorkspaceCanvasEditorsConfig = {
+    assetService: AssetService
+    auth: AuthClientInstance
+}
 
 const conversationControls = (createContextTray: () => HTMLDivElement) => {
     const {
@@ -20,16 +31,23 @@ const conversationControls = (createContextTray: () => HTMLDivElement) => {
     }
 }
 
-export const createWorkspaceCanvasEditors = (): WorkspaceCanvasEditors => {
+export const createWorkspaceCanvasEditors = ({
+    assetService,
+    auth,
+}: WorkspaceCanvasEditorsConfig): WorkspaceCanvasEditors => {
     return {
         createConversation: integration =>
             createCanvasConversationEditorPort({
+                assetService,
+                auth,
                 promptControlFactories: conversationControls(integration.createContextTray),
                 promptReferencePreviewRenderer: integration.promptReferencePreviewRenderer,
                 aiChatThreadRenderContext: { contextPreview: integration.contextPreview },
             }),
         createPrompt: integration =>
             createPromptComposerEditorPort({
+                assetService,
+                auth,
                 controlFactories: {
                     ...createDefaultPromptControlFactories(),
                     mountMediaModeSwitch: integration.mountMediaModeSwitch,
@@ -42,6 +60,8 @@ export const createWorkspaceCanvasEditors = (): WorkspaceCanvasEditors => {
             const html = createDocumentHtml(request.host.ownerDocument)
 
             return new ProseMirrorEditor({
+                assetService,
+                auth,
                 editorMountElement: request.host,
                 content: html`<div></div>` as HTMLDivElement,
                 initialVal: request.content,
@@ -67,6 +87,8 @@ export const createWorkspaceCanvasEditors = (): WorkspaceCanvasEditors => {
             const html = createDocumentHtml(container.ownerDocument)
 
             return new ProseMirrorEditor({
+                assetService,
+                auth,
                 editorMountElement: container,
                 content: html`<div></div>` as HTMLDivElement,
                 initialVal: document.content,
@@ -114,6 +136,8 @@ export const createWorkspaceCanvasEditors = (): WorkspaceCanvasEditors => {
         }) => {
             const html = createDocumentHtml(container.ownerDocument)
             const editor = new ProseMirrorEditor({
+                assetService,
+                auth,
                 editorMountElement: container,
                 content: html`<div></div>` as HTMLDivElement,
                 initialVal: document,
@@ -144,6 +168,10 @@ export const createWorkspaceCanvasEditors = (): WorkspaceCanvasEditors => {
                 destroy: () => editor.destroy(),
             }
         },
-        mountHistory: request => mountReadOnlyAiChatThreadProjection(request),
+        mountHistory: request => mountReadOnlyAiChatThreadProjection({
+            ...request,
+            assetService,
+            auth,
+        }),
     }
 }

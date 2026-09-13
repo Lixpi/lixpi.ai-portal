@@ -18,7 +18,9 @@ import {
 import {
     type BubbleMenuItem,
 } from '@lixpi/ui-kit/components/bubble-menu'
-import AuthService from '$src/services/auth-service.ts'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 import {
     boldIcon,
     italicIcon,
@@ -765,6 +767,7 @@ const createImageWrapButton = (
 const createImageActionButton = (
     item: ImageActionItem,
     bubbleMenuView: BubbleMenuView,
+    auth?: AuthTokenProvider,
 ): HTMLElement => {
     const button = createEl(
         'button',
@@ -814,7 +817,7 @@ const createImageActionButton = (
                     : null
 
                 if (imgEl?.src)
-                    downloadImage(imgEl.src, { getAuthToken: () => AuthService.getTokenSilently() })
+                    downloadImage(imgEl.src, { getAuthToken: () => auth?.getTokenSilently() ?? Promise.resolve(false) })
 
                 bubbleMenuView.forceHide()
 
@@ -978,6 +981,7 @@ export type MenuItemElement = BubbleMenuItem & {
 export const buildBubbleMenuItems = (
     view: EditorView,
     bubbleMenuView: BubbleMenuView,
+    auth?: AuthTokenProvider,
 ): {
     items: MenuItemElement[]
     linkInputPanel: HTMLElement
@@ -1078,7 +1082,11 @@ export const buildBubbleMenuItems = (
                 break
             }
             case 'imageAction': {
-                const btn = createImageActionButton(item, bubbleMenuView)
+                const btn = createImageActionButton(
+                    item,
+                    bubbleMenuView,
+                    auth,
+                )
                 items.push({
                     element: btn,
                     context: item.context,

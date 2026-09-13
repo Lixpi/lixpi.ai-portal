@@ -26,6 +26,7 @@ services:
             VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID}
             VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE}
             VITE_AUTH0_REDIRECT_URI: ${VITE_AUTH0_REDIRECT_URI}
+            VITE_USER_PORTAL_URL: ${VITE_USER_PORTAL_URL}
             VITE_STRIPE_PUBLIC_KEY: ${VITE_STRIPE_PUBLIC_KEY}
             VITE_NATS_SERVER: ${VITE_NATS_SERVER}
             # Shared content-addressable pnpm store (see the named volume
@@ -160,6 +161,11 @@ services:
             - ./packages/lixpi/ui-kit/package.json:/usr/src/service/web-ui/packages/lixpi/ui-kit/package.json:ro,cached
             - ./packages/lixpi/ui-kit/src:/usr/src/service/web-ui/packages/lixpi/ui-kit/src:ro,cached
             - ./packages/lixpi/ui-kit/styles:/usr/src/service/web-ui/packages/lixpi/ui-kit/styles:ro,cached
+            - ./packages/lixpi/auth-client/package.json:/usr/src/service/web-ui/packages/lixpi/auth-client/package.json:ro,cached
+            - ./packages/lixpi/auth-client/src:/usr/src/service/web-ui/packages/lixpi/auth-client/src:ro,cached
+            - ./packages/lixpi/web-client-service-factory/package.json:/usr/src/service/web-ui/packages/lixpi/web-client-service-factory/package.json:ro,cached
+            - ./packages/lixpi/web-client-service-factory/src:/usr/src/service/web-ui/packages/lixpi/web-client-service-factory/src:ro,cached
+            - ./packages/lixpi/web-client-service-factory/styles:/usr/src/service/web-ui/packages/lixpi/web-client-service-factory/styles:ro,cached
 
             # --- web-ui domain: persisted node_modules (see the
             #     typescript-test-runner-node-modules-* comment above) ---
@@ -175,6 +181,89 @@ services:
             - typescript-test-runner-node-modules-web-ui-prosemirror:/usr/src/service/web-ui/packages/lixpi/prosemirror/node_modules
             - typescript-test-runner-node-modules-web-ui-test-utils:/usr/src/service/web-ui/packages/lixpi/test-utils/node_modules
             - typescript-test-runner-node-modules-web-ui-ui-kit:/usr/src/service/web-ui/packages/lixpi/ui-kit/node_modules
+            - typescript-test-runner-node-modules-web-ui-auth-client:/usr/src/service/web-ui/packages/lixpi/auth-client/node_modules
+            - typescript-test-runner-node-modules-web-ui-web-client-service-factory:/usr/src/service/web-ui/packages/lixpi/web-client-service-factory/node_modules
+
+            # --- web-ui-user-portal domain ---
+            - ./services/web-ui-user-portal/package.json:/usr/src/service/web-ui-user-portal/package.json:cached
+            - ./services/web-ui-user-portal/pnpm-workspace.yaml:/usr/src/service/web-ui-user-portal/pnpm-workspace.yaml:cached
+            - ./services/web-ui-user-portal/index.html:/usr/src/service/web-ui-user-portal/index.html:cached
+            - ./services/web-ui-user-portal/vitest.config.ts:/usr/src/service/web-ui-user-portal/vitest.config.ts:cached
+            - ./services/web-ui-user-portal/tsconfig.json:/usr/src/service/web-ui-user-portal/tsconfig.json:ro,cached
+            - ./services/web-ui-user-portal/src:/usr/src/service/web-ui-user-portal/src:cached
+            - ./packages/lixpi/constants/ai-interaction-constants.json:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ai-interaction-constants.json:ro,cached
+            - ./packages/lixpi/constants/nats-subjects.json:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/nats-subjects.json:ro,cached
+            - ./packages/lixpi/constants/ts/aws-resources.ts:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ts/aws-resources.ts:ro,cached
+            - ./packages/lixpi/constants/ts/asset-types.ts:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ts/asset-types.ts:ro,cached
+            - ./packages/lixpi/constants/ts/index.ts:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ts/index.ts:ro,cached
+            - ./packages/lixpi/constants/ts/media-generation-layout-settings.ts:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ts/media-generation-layout-settings.ts:ro,cached
+            - ./packages/lixpi/constants/ts/media-generation-progress.ts:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ts/media-generation-progress.ts:ro,cached
+            - ./packages/lixpi/constants/ts/workspace-persistence-settings.ts:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ts/workspace-persistence-settings.ts:ro,cached
+            - ./packages/lixpi/constants/ts/package.json:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ts/package.json:ro,cached
+            - ./packages/lixpi/constants/ts/types.ts:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ts/types.ts:ro,cached
+            - ./packages/lixpi/debug-tools/ts/debug-tools.ts:/usr/src/service/web-ui-user-portal/packages/lixpi/debug-tools/ts/debug-tools.ts:ro,cached
+            - ./packages/lixpi/debug-tools/ts/package.json:/usr/src/service/web-ui-user-portal/packages/lixpi/debug-tools/ts/package.json:ro,cached
+            - ./packages/lixpi/nats-service/ts/nats-service.ts:/usr/src/service/web-ui-user-portal/packages/lixpi/nats-service/ts/nats-service.ts:ro,cached
+            - ./packages/lixpi/nats-service/ts/package.json:/usr/src/service/web-ui-user-portal/packages/lixpi/nats-service/ts/package.json:ro,cached
+            - ./packages/lixpi/ui-kit-gentelella/package.json:/usr/src/service/web-ui-user-portal/packages/lixpi/ui-kit-gentelella/package.json:ro,cached
+            - ./packages/lixpi/ui-kit-gentelella/src:/usr/src/service/web-ui-user-portal/packages/lixpi/ui-kit-gentelella/src:ro,cached
+            - ./packages/lixpi/ui-kit-gentelella/styles:/usr/src/service/web-ui-user-portal/packages/lixpi/ui-kit-gentelella/styles:ro,cached
+            - ./packages/lixpi/ui-primitives/package.json:/usr/src/service/web-ui-user-portal/packages/lixpi/ui-primitives/package.json:ro,cached
+            - ./packages/lixpi/ui-primitives/src:/usr/src/service/web-ui-user-portal/packages/lixpi/ui-primitives/src:ro,cached
+            - ./packages/lixpi/auth-client/package.json:/usr/src/service/web-ui-user-portal/packages/lixpi/auth-client/package.json:ro,cached
+            - ./packages/lixpi/auth-client/src:/usr/src/service/web-ui-user-portal/packages/lixpi/auth-client/src:ro,cached
+            - ./packages/lixpi/web-client-service-factory/package.json:/usr/src/service/web-ui-user-portal/packages/lixpi/web-client-service-factory/package.json:ro,cached
+            - ./packages/lixpi/web-client-service-factory/src:/usr/src/service/web-ui-user-portal/packages/lixpi/web-client-service-factory/src:ro,cached
+            - ./packages/lixpi/web-client-service-factory/styles:/usr/src/service/web-ui-user-portal/packages/lixpi/web-client-service-factory/styles:ro,cached
+            - typescript-test-runner-node-modules-web-ui-user-portal:/usr/src/service/web-ui-user-portal/node_modules
+            - typescript-test-runner-node-modules-web-ui-user-portal-constants-ts:/usr/src/service/web-ui-user-portal/packages/lixpi/constants/ts/node_modules
+            - typescript-test-runner-node-modules-web-ui-user-portal-debug-tools-ts:/usr/src/service/web-ui-user-portal/packages/lixpi/debug-tools/ts/node_modules
+            - typescript-test-runner-node-modules-web-ui-user-portal-nats-service-ts:/usr/src/service/web-ui-user-portal/packages/lixpi/nats-service/ts/node_modules
+            - typescript-test-runner-node-modules-web-ui-user-portal-ui-kit-gentelella:/usr/src/service/web-ui-user-portal/packages/lixpi/ui-kit-gentelella/node_modules
+            - typescript-test-runner-node-modules-web-ui-user-portal-ui-primitives:/usr/src/service/web-ui-user-portal/packages/lixpi/ui-primitives/node_modules
+            - typescript-test-runner-node-modules-web-ui-user-portal-auth-client:/usr/src/service/web-ui-user-portal/packages/lixpi/auth-client/node_modules
+            - typescript-test-runner-node-modules-web-ui-user-portal-web-client-service-factory:/usr/src/service/web-ui-user-portal/packages/lixpi/web-client-service-factory/node_modules
+
+            # --- ai-model-registry domain ---
+            - ./services/ai-model-registry/package.json:/usr/src/service/ai-model-registry/package.json:cached
+            - ./services/ai-model-registry/pnpm-workspace.yaml:/usr/src/service/ai-model-registry/pnpm-workspace.yaml:cached
+            - ./services/ai-model-registry/vitest.config.ts:/usr/src/service/ai-model-registry/vitest.config.ts:cached
+            - ./services/ai-model-registry/src/client:/usr/src/service/ai-model-registry/src/client:cached
+            - ./packages/lixpi/constants/ai-interaction-constants.json:/usr/src/service/ai-model-registry/packages/lixpi/constants/ai-interaction-constants.json:ro,cached
+            - ./packages/lixpi/constants/nats-subjects.json:/usr/src/service/ai-model-registry/packages/lixpi/constants/nats-subjects.json:ro,cached
+            - ./packages/lixpi/constants/ts/aws-resources.ts:/usr/src/service/ai-model-registry/packages/lixpi/constants/ts/aws-resources.ts:ro,cached
+            - ./packages/lixpi/constants/ts/asset-types.ts:/usr/src/service/ai-model-registry/packages/lixpi/constants/ts/asset-types.ts:ro,cached
+            - ./packages/lixpi/constants/ts/index.ts:/usr/src/service/ai-model-registry/packages/lixpi/constants/ts/index.ts:ro,cached
+            - ./packages/lixpi/constants/ts/media-generation-layout-settings.ts:/usr/src/service/ai-model-registry/packages/lixpi/constants/ts/media-generation-layout-settings.ts:ro,cached
+            - ./packages/lixpi/constants/ts/media-generation-progress.ts:/usr/src/service/ai-model-registry/packages/lixpi/constants/ts/media-generation-progress.ts:ro,cached
+            - ./packages/lixpi/constants/ts/workspace-persistence-settings.ts:/usr/src/service/ai-model-registry/packages/lixpi/constants/ts/workspace-persistence-settings.ts:ro,cached
+            - ./packages/lixpi/constants/ts/package.json:/usr/src/service/ai-model-registry/packages/lixpi/constants/ts/package.json:ro,cached
+            - ./packages/lixpi/constants/ts/types.ts:/usr/src/service/ai-model-registry/packages/lixpi/constants/ts/types.ts:ro,cached
+            - ./packages/lixpi/debug-tools/ts/debug-tools.ts:/usr/src/service/ai-model-registry/packages/lixpi/debug-tools/ts/debug-tools.ts:ro,cached
+            - ./packages/lixpi/debug-tools/ts/package.json:/usr/src/service/ai-model-registry/packages/lixpi/debug-tools/ts/package.json:ro,cached
+            - ./packages/lixpi/dynamodb-service/package.json:/usr/src/service/ai-model-registry/packages/lixpi/dynamodb-service/package.json:ro,cached
+            - ./packages/lixpi/dynamodb-service/src:/usr/src/service/ai-model-registry/packages/lixpi/dynamodb-service/src:ro,cached
+            - ./packages/lixpi/nats-service/ts/nats-service.ts:/usr/src/service/ai-model-registry/packages/lixpi/nats-service/ts/nats-service.ts:ro,cached
+            - ./packages/lixpi/nats-service/ts/package.json:/usr/src/service/ai-model-registry/packages/lixpi/nats-service/ts/package.json:ro,cached
+            - ./packages/lixpi/ui-kit-gentelella/package.json:/usr/src/service/ai-model-registry/packages/lixpi/ui-kit-gentelella/package.json:ro,cached
+            - ./packages/lixpi/ui-kit-gentelella/src:/usr/src/service/ai-model-registry/packages/lixpi/ui-kit-gentelella/src:ro,cached
+            - ./packages/lixpi/ui-kit-gentelella/styles:/usr/src/service/ai-model-registry/packages/lixpi/ui-kit-gentelella/styles:ro,cached
+            - ./packages/lixpi/ui-primitives/package.json:/usr/src/service/ai-model-registry/packages/lixpi/ui-primitives/package.json:ro,cached
+            - ./packages/lixpi/ui-primitives/src:/usr/src/service/ai-model-registry/packages/lixpi/ui-primitives/src:ro,cached
+            - ./packages/lixpi/usage-reporter/package.json:/usr/src/service/ai-model-registry/packages/lixpi/usage-reporter/package.json:ro,cached
+            - ./packages/lixpi/usage-reporter/src:/usr/src/service/ai-model-registry/packages/lixpi/usage-reporter/src:ro,cached
+            - ./packages/lixpi/web-client-service-factory/package.json:/usr/src/service/ai-model-registry/packages/lixpi/web-client-service-factory/package.json:ro,cached
+            - ./packages/lixpi/web-client-service-factory/src:/usr/src/service/ai-model-registry/packages/lixpi/web-client-service-factory/src:ro,cached
+            - ./packages/lixpi/web-client-service-factory/styles:/usr/src/service/ai-model-registry/packages/lixpi/web-client-service-factory/styles:ro,cached
+            - typescript-test-runner-node-modules-ai-model-registry:/usr/src/service/ai-model-registry/node_modules
+            - typescript-test-runner-node-modules-ai-model-registry-constants-ts:/usr/src/service/ai-model-registry/packages/lixpi/constants/ts/node_modules
+            - typescript-test-runner-node-modules-ai-model-registry-debug-tools-ts:/usr/src/service/ai-model-registry/packages/lixpi/debug-tools/ts/node_modules
+            - typescript-test-runner-node-modules-ai-model-registry-dynamodb-service:/usr/src/service/ai-model-registry/packages/lixpi/dynamodb-service/node_modules
+            - typescript-test-runner-node-modules-ai-model-registry-nats-service-ts:/usr/src/service/ai-model-registry/packages/lixpi/nats-service/ts/node_modules
+            - typescript-test-runner-node-modules-ai-model-registry-ui-kit-gentelella:/usr/src/service/ai-model-registry/packages/lixpi/ui-kit-gentelella/node_modules
+            - typescript-test-runner-node-modules-ai-model-registry-ui-primitives:/usr/src/service/ai-model-registry/packages/lixpi/ui-primitives/node_modules
+            - typescript-test-runner-node-modules-ai-model-registry-usage-reporter:/usr/src/service/ai-model-registry/packages/lixpi/usage-reporter/node_modules
+            - typescript-test-runner-node-modules-ai-model-registry-web-client-service-factory:/usr/src/service/ai-model-registry/packages/lixpi/web-client-service-factory/node_modules
 
             # --- nex domain (bind-mounts services/nex's own files, plus a
             #     vitest.config.ts that services/nex didn't have before —
@@ -271,6 +360,13 @@ services:
             - ./packages/lixpi/ui-kit-gentelella/src:/usr/src/service/shared/ui-kit-gentelella/src:cached
             - ./packages/lixpi/ui-kit-gentelella/styles:/usr/src/service/shared/ui-kit-gentelella/styles:cached
             - ./packages/lixpi/ui-kit-gentelella/vitest.config.ts:/usr/src/service/shared/ui-kit-gentelella/vitest.config.ts:cached
+            - ./packages/lixpi/auth-client/package.json:/usr/src/service/shared/auth-client/package.json:cached
+            - ./packages/lixpi/auth-client/src:/usr/src/service/shared/auth-client/src:cached
+            - ./packages/lixpi/auth-client/vitest.config.ts:/usr/src/service/shared/auth-client/vitest.config.ts:cached
+            - ./packages/lixpi/web-client-service-factory/package.json:/usr/src/service/shared/web-client-service-factory/package.json:cached
+            - ./packages/lixpi/web-client-service-factory/src:/usr/src/service/shared/web-client-service-factory/src:cached
+            - ./packages/lixpi/web-client-service-factory/styles:/usr/src/service/shared/web-client-service-factory/styles:cached
+            - ./packages/lixpi/web-client-service-factory/vitest.config.ts:/usr/src/service/shared/web-client-service-factory/vitest.config.ts:cached
             - ./packages/lixpi/usage-reporter/package.json:/usr/src/service/shared/usage-reporter/package.json:cached
             - ./packages/lixpi/usage-reporter/src:/usr/src/service/shared/usage-reporter/src:cached
 
@@ -291,6 +387,8 @@ services:
             - typescript-test-runner-node-modules-shared-test-utils:/usr/src/service/shared/test-utils/node_modules
             - typescript-test-runner-node-modules-shared-ui-kit:/usr/src/service/shared/ui-kit/node_modules
             - typescript-test-runner-node-modules-shared-ui-kit-gentelella:/usr/src/service/shared/ui-kit-gentelella/node_modules
+            - typescript-test-runner-node-modules-shared-auth-client:/usr/src/service/shared/auth-client/node_modules
+            - typescript-test-runner-node-modules-shared-web-client-service-factory:/usr/src/service/shared/web-client-service-factory/node_modules
             - typescript-test-runner-node-modules-shared-usage-reporter:/usr/src/service/shared/usage-reporter/node_modules
         networks:
             - nats
@@ -333,6 +431,25 @@ volumes:
     typescript-test-runner-node-modules-web-ui-prosemirror:
     typescript-test-runner-node-modules-web-ui-test-utils:
     typescript-test-runner-node-modules-web-ui-ui-kit:
+    typescript-test-runner-node-modules-web-ui-auth-client:
+    typescript-test-runner-node-modules-web-ui-web-client-service-factory:
+    typescript-test-runner-node-modules-web-ui-user-portal:
+    typescript-test-runner-node-modules-web-ui-user-portal-constants-ts:
+    typescript-test-runner-node-modules-web-ui-user-portal-debug-tools-ts:
+    typescript-test-runner-node-modules-web-ui-user-portal-nats-service-ts:
+    typescript-test-runner-node-modules-web-ui-user-portal-ui-kit-gentelella:
+    typescript-test-runner-node-modules-web-ui-user-portal-ui-primitives:
+    typescript-test-runner-node-modules-web-ui-user-portal-auth-client:
+    typescript-test-runner-node-modules-web-ui-user-portal-web-client-service-factory:
+    typescript-test-runner-node-modules-ai-model-registry:
+    typescript-test-runner-node-modules-ai-model-registry-constants-ts:
+    typescript-test-runner-node-modules-ai-model-registry-debug-tools-ts:
+    typescript-test-runner-node-modules-ai-model-registry-dynamodb-service:
+    typescript-test-runner-node-modules-ai-model-registry-nats-service-ts:
+    typescript-test-runner-node-modules-ai-model-registry-ui-kit-gentelella:
+    typescript-test-runner-node-modules-ai-model-registry-ui-primitives:
+    typescript-test-runner-node-modules-ai-model-registry-usage-reporter:
+    typescript-test-runner-node-modules-ai-model-registry-web-client-service-factory:
     typescript-test-runner-node-modules-nex:
     typescript-test-runner-node-modules-nex-constants-ts:
     typescript-test-runner-node-modules-nex-debug-tools-ts:
@@ -355,3 +472,5 @@ volumes:
     typescript-test-runner-node-modules-shared-test-utils:
     typescript-test-runner-node-modules-shared-ui-kit:
     typescript-test-runner-node-modules-shared-ui-kit-gentelella:
+    typescript-test-runner-node-modules-shared-auth-client:
+    typescript-test-runner-node-modules-shared-web-client-service-factory:

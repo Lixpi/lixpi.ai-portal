@@ -12,11 +12,7 @@ import {
     type ImageGenerationTraceReference,
 } from '@lixpi/constants'
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: vi.fn(async () => 'token-1'),
-    },
-}))
+const auth = { getTokenSilently: vi.fn(async () => 'token-1') }
 
 const makeReference = (overrides: Partial<ImageGenerationTraceReference> = {}): ImageGenerationTraceReference => {
     return {
@@ -50,7 +46,10 @@ const makeTrace = (referenceImages: ImageGenerationTraceReference[]): ImageGener
 type RenderOptions = Parameters<typeof createImageGenerationTraceDetails>[0]
 
 const renderTiles = (referenceImages: ImageGenerationTraceReference[], options: RenderOptions = {}) => {
-    const details = createImageGenerationTraceDetails(options)
+    const details = createImageGenerationTraceDetails({
+        auth,
+        ...options,
+    })
     details.renderReferenceGrid(makeTrace(referenceImages))
     const tiles = Array.from(details.dom.querySelectorAll('.ai-image-generation-reference')) as HTMLElement[]
     const image = details.dom.querySelector('.ai-image-generation-reference-image') as HTMLImageElement

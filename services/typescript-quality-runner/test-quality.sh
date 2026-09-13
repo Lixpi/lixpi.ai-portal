@@ -10,6 +10,7 @@ runner_dir="$tool_dir"
 dprint_bin="$tool_dir/node_modules/.bin/dprint"
 oxlint_bin="$tool_dir/node_modules/.bin/oxlint"
 import_order_checker="$runner_dir/import-specifier-order.ts"
+source_extension_runner="$runner_dir/source-extension-runner.ts"
 typescript_format_runner="$runner_dir/typescript-format-runner.ts"
 stylelint_runner="$tool_dir/stylelint-runner.ts"
 # dprint formats stylesheets only. TypeScript goes through the Oxfmt-backed formatter, so a
@@ -79,6 +80,22 @@ if ! cmp -s "$fixture_dir/type-import-order-valid.txt" "$temporary_dir/type-impo
     exit 1
 fi
 node "$import_order_checker" check "$temporary_dir/type-import-order.ts" >/dev/null
+
+# Alias resolution is supplied as data. Repeated aliases with the same specifier use the
+# narrowest importer scope, so the generic extension runner never needs application paths.
+source_extension_project="$temporary_dir/source-extension-project"
+mkdir -p "$source_extension_project/client/src" "$source_extension_project/shared"
+cp "$fixture_dir/source-extension-alias-importer.txt" "$source_extension_project/client/src/importer.ts"
+cp "$fixture_dir/source-extension-alias-module.txt" "$source_extension_project/client/src/value.js"
+source_extension_aliases="[{\"specifierPrefix\":\"\$src\",\"importerScope\":\"$source_extension_project\",\"targetDirectory\":\"$source_extension_project/shared\"},{\"specifierPrefix\":\"\$src\",\"importerScope\":\"$source_extension_project/client\",\"targetDirectory\":\"$source_extension_project/client/src\"}]"
+node "$source_extension_runner" fix --aliases "$source_extension_aliases" -- "$source_extension_project" >/dev/null
+if [ ! -f "$source_extension_project/client/src/value.ts" ] \
+    || [ -f "$source_extension_project/client/src/value.js" ] \
+    || ! grep -F 'from "$src/value.ts"' "$source_extension_project/client/src/importer.ts" >/dev/null; then
+    echo "The source extension runner did not use the configured importer scope and alias target" >&2
+    exit 1
+fi
+node "$source_extension_runner" check --aliases "$source_extension_aliases" -- "$source_extension_project" >/dev/null
 
 # Both JSX-bearing source extensions are rejected before any TypeScript formatting begins.
 touch "$temporary_dir/react-component.tsx"

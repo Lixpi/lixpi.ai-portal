@@ -70,6 +70,8 @@ Product behavior and persistence stay in the central workspace guides. Rendering
 | [UI Primitives](../packages/lixpi/ui-primitives/README.md) | Shared DOM templates, SVG utilities, colors, gradients and easing |
 | [UI Kit](../packages/lixpi/ui-kit/README.md) | Panels, menus, tooltips, controls, previews and icon artwork |
 | [Gentelella UI Kit](../packages/lixpi/ui-kit-gentelella/README.md) | Gentelella theme styles, typed runtime facades, class contracts and composable DOM components |
+| [Auth Client](../packages/lixpi/auth-client/README.md) | Shared browser authentication, auth/user Nano Stores, and current-user loading |
+| [Web Client Service Factory](../packages/lixpi/web-client-service-factory/README.md) | Dependency-neutral browser startup, routing, base Nano Stores, route views, Vite, and Sass setup |
 
 ## AI Chat & Context
 

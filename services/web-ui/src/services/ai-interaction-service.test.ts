@@ -40,12 +40,6 @@ const flushPromises = async (): Promise<void> => void (await new Promise(resolve
 
 vi.mock('uuid', () => ({ v4: uuidMock }))
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: getTokenSilentlyMock,
-    },
-}))
-
 vi.mock('$src/services/segmentsReceiver-service.ts', () => ({
     default: {
         receiveSegment: receiveSegmentMock,
@@ -58,11 +52,8 @@ vi.mock('$src/stores/servicesStore.ts', () => ({
     },
 }))
 
-vi.mock('$src/stores/userStore.ts', () => ({
-    userStore: {
-        getData: userGetMock,
-    },
-}))
+const auth = { getTokenSilently: getTokenSilentlyMock }
+const userStore = { getData: userGetMock } as never
 
 describe('AiInteractionService', () => {
     let service: AiInteractionService
@@ -86,10 +77,12 @@ describe('AiInteractionService', () => {
         natsRequestMock.mockResolvedValue({ events: [] })
 
         service = new AiInteractionService({
+            auth,
             workspaceId,
             conversationAssetId,
             organizationId,
             onError: onErrorMock,
+            userStore,
         })
 
         await flushPromises()
@@ -695,9 +688,11 @@ describe('AiInteractionService', () => {
     it('releases only its subscription when another view uses the same conversation', async () => {
         const first = natsSubscribeMock.mock.results[0].value
         const other = new AiInteractionService({
+            auth,
             workspaceId,
             conversationAssetId,
             organizationId,
+            userStore,
         })
         await flushPromises()
         const second = natsSubscribeMock.mock.results[1].value

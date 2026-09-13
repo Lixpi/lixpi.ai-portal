@@ -21,6 +21,7 @@ The quality runner follows the TypeScript test runner's domain shape. Run a serv
 
 ```bash
 docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-quality-runner web-ui validate
+docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-quality-runner web-ui-user-portal validate
 docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-quality-runner api validate
 docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-quality-runner nex validate
 docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-quality-runner ai-model-registry validate
@@ -42,6 +43,8 @@ docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescri
 ```
 
 The action is optional and defaults to `validate`.
+
+Domain configuration passes source aliases to the extension runner as `specifierPrefix`, `importerScope`, and `targetDirectory` data. The extension runner resolves the narrowest matching importer scope and contains no service names or application paths. Domains without aliases pass an empty list.
 
 | Action | Behavior |
 |--------|----------|

@@ -17,7 +17,9 @@ import {
     createSlidingSwitch,
     type SlidingSwitchInstance,
 } from '@lixpi/ui-kit/components/sliding-switch'
-import AuthService from '$src/services/auth-service.ts'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 import {
     type PromptReferenceCatalogClient,
 } from '$src/services/prompt-reference-catalog-client.ts'
@@ -279,6 +281,7 @@ class PromptReferencePickerMenu {
     }
 
     constructor(
+        private readonly auth: AuthTokenProvider,
         private readonly view: EditorView,
         private readonly catalog: PromptReferenceCatalogClient,
         private readonly mode: PromptReferencePickerMode,
@@ -708,7 +711,7 @@ class PromptReferencePickerMenu {
                         `/api/assets/${encodeURIComponent(item.referenceId)}/renditions/${rendition}`,
                         {
                             apiBaseUrl: import.meta.env.VITE_API_URL || '',
-                            getAuthToken: () => AuthService.getTokenSilently(),
+                            getAuthToken: () => this.auth.getTokenSilently(),
                         },
                     )
 
@@ -958,6 +961,7 @@ class PromptReferencePickerMenu {
 }
 
 const createPromptReferencePickerPlugin = (
+    auth: AuthTokenProvider,
     catalog: PromptReferenceCatalogClient,
     mode: PromptReferencePickerMode,
 ): Plugin<PromptReferencePickerState> => {
@@ -1025,6 +1029,7 @@ const createPromptReferencePickerPlugin = (
         },
         view(editorView) {
             menu = new PromptReferencePickerMenu(
+                auth,
                 editorView,
                 catalog,
                 mode,
@@ -1042,12 +1047,20 @@ const createPromptReferencePickerPlugin = (
     })
 }
 
-export const createAtPromptReferencePickerPlugin = (catalog: PromptReferenceCatalogClient): Plugin => createPromptReferencePickerPlugin(
+export const createAtPromptReferencePickerPlugin = (
+    auth: AuthTokenProvider,
+    catalog: PromptReferenceCatalogClient,
+): Plugin => createPromptReferencePickerPlugin(
+    auth,
     catalog,
     'references',
 )
 
-export const createSlashCapabilityModulePickerPlugin = (catalog: PromptReferenceCatalogClient): Plugin => createPromptReferencePickerPlugin(
+export const createSlashCapabilityModulePickerPlugin = (
+    auth: AuthTokenProvider,
+    catalog: PromptReferenceCatalogClient,
+): Plugin => createPromptReferencePickerPlugin(
+    auth,
     catalog,
     'modules',
 )

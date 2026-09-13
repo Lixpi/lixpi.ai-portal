@@ -13,15 +13,11 @@ import {
     aiGeneratedImageNodeSpec,
     aiGeneratedImageNodeView,
 } from '$src/components/proseMirror/plugins/aiChatThreadPlugin/aiGeneratedImageNode.ts'
-import AuthService from '$src/services/auth-service.ts'
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: vi.fn(),
-    },
-}))
+const getTokenSilently = vi.fn()
+const auth = { getTokenSilently }
 
-beforeEach(() => void vi.mocked(AuthService.getTokenSilently).mockReset().mockResolvedValue('token-1'))
+beforeEach(() => void getTokenSilently.mockReset().mockResolvedValue('token-1'))
 
 const createFakeNodeElement = (imageData: string, variantIndex: string): HTMLElement => {
     const node = document.createElement('div')
@@ -85,7 +81,7 @@ const createNodeView = (overrides: Record<string, unknown> = {}, getPos: () => n
         editable: true,
     }
 
-    const nodeView = aiGeneratedImageNodeView(node as any, view as any, getPos)
+    const nodeView = aiGeneratedImageNodeView(node as any, view as any, getPos, auth)
 
     return {
         nodeView,
@@ -178,13 +174,13 @@ describe('aiGeneratedImageNodeView', () => {
         await Promise.resolve()
         await vi.waitFor(() => expect(getImageSrc(nodeView)).toContain('token=token-1'))
 
-        expect(AuthService.getTokenSilently).toHaveBeenCalledTimes(1)
+        expect(getTokenSilently).toHaveBeenCalledTimes(1)
         expect(getImageSrc(nodeView)).toContain('/api/images/workspace-images/final-file')
         expect(getImageSrc(nodeView)).toContain('token=token-1')
     })
 
     it('replaces stale tokenized image URLs with a refreshed token', async () => {
-        vi.mocked(AuthService.getTokenSilently).mockResolvedValue('fresh-token')
+        getTokenSilently.mockResolvedValue('fresh-token')
 
         const { nodeView } = createNodeView({
             imageData: 'https://cdn.example.com/api/files/workspace-images/final-file?token=stale',
@@ -277,7 +273,7 @@ describe('aiGeneratedImageNodeView', () => {
     })
 
     it('does not request auth tokens for plain external URLs', async () => {
-        vi.mocked(AuthService.getTokenSilently).mockReset().mockResolvedValue('token-1')
+        getTokenSilently.mockReset().mockResolvedValue('token-1')
         const { nodeView } = createNodeView({
             imageData: 'https://cdn.example.com/preview/public-image.png',
             isPartial: false,
@@ -286,7 +282,7 @@ describe('aiGeneratedImageNodeView', () => {
 
         await Promise.resolve()
 
-        expect(AuthService.getTokenSilently).not.toHaveBeenCalled()
+        expect(getTokenSilently).not.toHaveBeenCalled()
         expect(image.getAttribute('src')).toBe('https://cdn.example.com/preview/public-image.png')
     })
 

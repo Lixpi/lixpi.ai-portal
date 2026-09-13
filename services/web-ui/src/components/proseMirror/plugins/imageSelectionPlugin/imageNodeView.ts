@@ -11,7 +11,9 @@ import {
     brokenImageIcon,
 } from '@lixpi/ui-kit/svg'
 import { renderMediaModelBadge } from '@lixpi/ui-kit/components/media-model-badge'
-import AuthService from '$src/services/auth-service.ts'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 import {
     html,
     applyStyle,
@@ -29,6 +31,7 @@ type TextWrap = 'none' | 'left' | 'right'
 type ResizeCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 
 type ImageNodeViewOptions = {
+    auth?: AuthTokenProvider
     node: ProseMirrorNode
     view: EditorView
     getPos: () => number | undefined
@@ -38,12 +41,15 @@ type ImageNodeViewOptions = {
 const getImageSrcAttr = (node: ProseMirrorNode): string => node.attrs.src || node.attrs.imageData || ''
 
 // Build image src with auth token if needed
-const buildImageSrc = async (src: string): Promise<string> => {
+const buildImageSrc = async (
+    auth: AuthTokenProvider | undefined,
+    src: string,
+): Promise<string> => {
     return resolveAuthenticatedMediaUrl(
         src,
         {
             apiBaseUrl: import.meta.env.VITE_API_URL || '',
-            getAuthToken: () => AuthService.getTokenSilently(),
+            getAuthToken: () => auth?.getTokenSilently() ?? Promise.resolve(false),
         },
     )
 }
@@ -55,6 +61,7 @@ export class ImageNodeView implements NodeView {
     private view: EditorView
     private getPos: () => number | undefined
     private node: ProseMirrorNode
+    private readonly auth?: AuthTokenProvider
 
     private figure: HTMLElement
     private titleElement: HTMLElement | null = null
@@ -72,10 +79,12 @@ export class ImageNodeView implements NodeView {
     private unsubscribeAiModelsStore: (() => void) | null = null
 
     constructor({
+        auth,
         node,
         view,
         getPos,
     }: ImageNodeViewOptions) {
+        this.auth = auth
         this.node = node
         this.view = view
         this.getPos = getPos
@@ -171,7 +180,7 @@ export class ImageNodeView implements NodeView {
         this.currentSrcAttr = src
 
         try {
-            const resolvedSrc = await buildImageSrc(src)
+            const resolvedSrc = await buildImageSrc(this.auth, src)
 
             if (this.img.src !== resolvedSrc) {
                 this.mediaFrame.querySelector('.image-error-placeholder')?.remove()

@@ -18,13 +18,19 @@ import {
     type SubmitResult,
 } from '@lixpi/prosemirror'
 import { NATS_SUBJECTS } from '@lixpi/constants'
+import {
+    type AuthTokenProvider,
+    type UserStateStore,
+} from '@lixpi/auth-client'
 
-import AuthService from '$src/services/auth-service.ts'
-import AssetService from '$src/services/asset-service.ts'
+import {
+    type AssetService,
+} from '$src/services/asset-service.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
-import { userStore } from '$src/stores/userStore.ts'
 
 type Options = {
+    assetService: AssetService
+    auth: AuthTokenProvider
     organizationId: string
     workspaceId: string
     assetId: string
@@ -38,6 +44,7 @@ type Options = {
         holderWorkspaceId?: string
         expiresAt?: number
     }) => void
+    userStore: UserStateStore
 }
 
 type PendingLocalStep = {
@@ -58,7 +65,6 @@ const sharedWorkspaceLeases = new Map<string, {
 
 export class ProseMirrorAuthorityService {
     private readonly clientId = uuidv4()
-    private readonly assetService = new AssetService()
     private readonly pendingLocalSteps: PendingLocalStep[] = []
     private readonly pendingRemoteSteps = new Map<number, LoggedEvent & { kind: 'STEP' }>()
     private localVersion: number
@@ -151,7 +157,7 @@ export class ProseMirrorAuthorityService {
 
             if (sharedLease.references === 0) {
                 sharedWorkspaceLeases.delete(this.sharedLeaseKey!)
-                void this.assetService.releaseLease(
+                void this.options.assetService.releaseLease(
                     this.options.assetId,
                     this.options.workspaceId,
                     leaseId,
@@ -159,7 +165,7 @@ export class ProseMirrorAuthorityService {
                 )
             }
         } else if (leaseId)
-            void this.assetService.releaseLease(
+            void this.options.assetService.releaseLease(
                 this.options.assetId,
                 this.options.workspaceId,
                 leaseId,
@@ -184,7 +190,7 @@ export class ProseMirrorAuthorityService {
         if (this.disconnected)
             return
 
-        const userId = userStore.getData('userId') as string
+        const userId = this.options.userStore.getData('userId') as string
 
         if (!userId)
             throw new Error('USER_ID_REQUIRED')
@@ -218,7 +224,7 @@ export class ProseMirrorAuthorityService {
             return
         }
 
-        const result = await this.assetService.acquireLease(
+        const result = await this.options.assetService.acquireLease(
             this.options.assetId,
             this.options.workspaceId,
             this.clientId,
@@ -250,7 +256,7 @@ export class ProseMirrorAuthorityService {
                 return
             }
 
-            const asset = await this.assetService.get(this.options.assetId, this.options.workspaceId)
+            const asset = await this.options.assetService.get(this.options.assetId, this.options.workspaceId)
 
             if (this.disconnected)
                 return
@@ -306,7 +312,7 @@ export class ProseMirrorAuthorityService {
         const holderId = this.sharedLeaseKey
             ? sharedWorkspaceLeases.get(this.sharedLeaseKey)?.holderId ?? this.clientId
             : this.clientId
-        const result = await this.assetService.renewLease(
+        const result = await this.options.assetService.renewLease(
             this.options.assetId,
             this.options.workspaceId,
             this.leaseId,
@@ -346,7 +352,7 @@ export class ProseMirrorAuthorityService {
         holderId: string,
     ): Promise<void> {
         try {
-            await this.assetService.releaseLease(
+            await this.options.assetService.releaseLease(
                 this.options.assetId,
                 this.options.workspaceId,
                 leaseId,
@@ -377,7 +383,7 @@ export class ProseMirrorAuthorityService {
                 const result = (await servicesStore.getData('nats').request(
                     NATS_SUBJECTS.ASSET_SUBJECTS.DOCUMENT_RESUME,
                     {
-                        token: await AuthService.getTokenSilently(),
+                        token: await this.options.auth.getTokenSilently(),
                         organizationId: this.options.organizationId,
                         workspaceId: this.options.workspaceId,
                         assetId: this.options.assetId,
@@ -393,7 +399,7 @@ export class ProseMirrorAuthorityService {
                 if (result.error)
                     throw new Error(result.error)
 
-                const userId = userStore.getData('userId') as string
+                const userId = this.options.userStore.getData('userId') as string
                 const expectedLiveSubject = getAssetDocumentEventSubject(
                     userId,
                     {
@@ -411,7 +417,7 @@ export class ProseMirrorAuthorityService {
                     && result.snapshot.version > this.localVersion
                     && acceptSnapshot
                 ) {
-                    const snapshot = await this.assetService.fetchDocumentSnapshot(result.snapshot)
+                    const snapshot = await this.options.assetService.fetchDocumentSnapshot(result.snapshot)
 
                     if (
                         snapshot.version > this.localVersion
@@ -625,7 +631,7 @@ export class ProseMirrorAuthorityService {
                 const result = (await servicesStore.getData('nats').request(
                     NATS_SUBJECTS.ASSET_SUBJECTS.DOCUMENT_SUBMIT_STEPS,
                     {
-                        token: await AuthService.getTokenSilently(),
+                        token: await this.options.auth.getTokenSilently(),
                         organizationId: this.options.organizationId,
                         assetId: this.options.assetId,
                         role: this.options.role,

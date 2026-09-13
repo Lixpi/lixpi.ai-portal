@@ -29,6 +29,7 @@ const catalog = {
         throw new Error('not used')
     },
 }
+const auth = { getTokenSilently: vi.fn(async () => 'token-1') }
 
 afterEach(() => {
     vi.useRealTimers()
@@ -48,7 +49,7 @@ const createPromptState = (plugin: ReturnType<typeof createAtPromptReferencePick
 
 describe('promptReferencePickerPlugin', () => {
     it('defaults each @ session to Media and retains the query while switching categories', () => {
-        const plugin = createAtPromptReferencePickerPlugin(catalog)
+        const plugin = createAtPromptReferencePickerPlugin(auth, catalog)
         let state = createPromptState(plugin)
         state = state.apply(
             state.tr.insertText('@').setMeta(promptReferencePickerPluginKey, {
@@ -77,7 +78,7 @@ describe('promptReferencePickerPlugin', () => {
     })
 
     it('hard-locks the slash picker to Capability modules', () => {
-        const plugin = createSlashCapabilityModulePickerPlugin(catalog)
+        const plugin = createSlashCapabilityModulePickerPlugin(auth, catalog)
         let state = createPromptState(plugin)
         state = state.apply(state.tr.setMeta(capabilityModulePickerPluginKey, {
             type: 'open',
@@ -92,7 +93,7 @@ describe('promptReferencePickerPlugin', () => {
     })
 
     it('keeps wheel scrolling inside the picker instead of bubbling to the canvas', () => {
-        const plugin = createAtPromptReferencePickerPlugin(catalog)
+        const plugin = createAtPromptReferencePickerPlugin(auth, catalog)
         const mount = document.createElement('div')
         document.body.appendChild(mount)
         const canvasWheelHandler = vi.fn()
@@ -126,7 +127,7 @@ describe('promptReferencePickerPlugin', () => {
         ] as const,
     )('closes the %s picker only when pressing outside it', async (trigger, createPlugin, pluginKey) => {
         vi.useFakeTimers()
-        const plugin = createPlugin(catalog)
+        const plugin = createPlugin(auth, catalog)
         const mount = document.createElement('div')
         const outside = document.createElement('button')
         document.body.append(mount, outside)
@@ -226,7 +227,7 @@ describe('promptReferencePickerPlugin', () => {
                 items: category === 'artifacts' ? [artifact] : [],
             })),
         }
-        const plugin = createAtPromptReferencePickerPlugin(artifactCatalog)
+        const plugin = createAtPromptReferencePickerPlugin(auth, artifactCatalog)
         const mount = document.createElement('div')
         document.body.appendChild(mount)
         const view = new EditorView(mount, { state: createPromptState(plugin) })
@@ -275,7 +276,7 @@ describe('promptReferencePickerPlugin', () => {
                 }))
             ),
         }
-        const plugin = createSlashCapabilityModulePickerPlugin(asyncCatalog)
+        const plugin = createSlashCapabilityModulePickerPlugin(auth, asyncCatalog)
         const mount = document.createElement('div')
         document.body.appendChild(mount)
         const view = new EditorView(mount, { state: createPromptState(plugin) })
@@ -397,7 +398,7 @@ describe('promptReferencePickerPlugin', () => {
             tags: [],
             status: 'active',
         }
-        const plugin = createSlashCapabilityModulePickerPlugin(asyncCatalog)
+        const plugin = createSlashCapabilityModulePickerPlugin(auth, asyncCatalog)
         const mount = document.createElement('div')
         document.body.appendChild(mount)
         const view = new EditorView(mount, { state: createPromptState(plugin) })

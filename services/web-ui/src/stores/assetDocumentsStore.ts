@@ -1,7 +1,7 @@
-import { writable } from '$src/stores/nanoStore.ts'
 import {
     type AssetDocumentRole,
 } from '@lixpi/constants'
+import { createStore } from '@lixpi/web-client-service-factory'
 
 export type AssetDocumentSnapshot = {
     assetId: string
@@ -10,55 +10,45 @@ export type AssetDocumentSnapshot = {
     doc: object
 }
 
-const store = writable(
-    new Map<string, AssetDocumentSnapshot>(),
-)
-const key = (
+const snapshotKey = (
     assetId: string,
     role: AssetDocumentRole,
 ): string => `${assetId}#${role}`
 
-export const assetDocumentsStore = {
-    ...store,
-    set: (snapshot: AssetDocumentSnapshot): void =>
-        void store.update(items => {
-            const next = new Map(items)
-            next.set(
-                key(snapshot.assetId, snapshot.role),
-                snapshot,
-            )
-
-            return next
-        }),
-    setMany: (snapshots: AssetDocumentSnapshot[]): void => {
-        if (snapshots.length === 0)
-            return
-
-        store.update(items => {
-            const next = new Map(items)
-
-            for (const snapshot of snapshots) {
+export const assetDocumentsStore = createStore({
+    initialState: new Map<string, AssetDocumentSnapshot>(),
+    createMethods: store => ({
+        set: (snapshot: AssetDocumentSnapshot): void =>
+            void store.update(items => {
+                const next = new Map(items)
                 next.set(
-                    key(snapshot.assetId, snapshot.role),
-                    snapshot,
+                    snapshotKey(snapshot.assetId, snapshot.role),
+                    structuredClone(snapshot),
                 )
-            }
 
-            return next
-        })
-    },
-    get: (assetId: string, role: AssetDocumentRole): AssetDocumentSnapshot | undefined => {
-        let result: AssetDocumentSnapshot | undefined
-        const unsubscribe = store.subscribe(
-            items => void (result = items.get(
-                key(assetId, role),
-            )),
-        )
-        unsubscribe()
+                return next
+            }),
+        setMany: (snapshots: AssetDocumentSnapshot[]): void => {
+            if (snapshots.length === 0)
+                return
 
-        return result
-    },
-    reset: (): void => void store.set(
-        new Map(),
-    ),
-}
+            store.update(items => {
+                const next = new Map(items)
+
+                for (const snapshot of snapshots) {
+                    next.set(
+                        snapshotKey(snapshot.assetId, snapshot.role),
+                        structuredClone(snapshot),
+                    )
+                }
+
+                return next
+            })
+        },
+        get: (assetId: string, role: AssetDocumentRole): AssetDocumentSnapshot | undefined =>
+            store.get().get(
+                snapshotKey(assetId, role),
+            ),
+        reset: (): void => void store.resetStore(),
+    }),
+})

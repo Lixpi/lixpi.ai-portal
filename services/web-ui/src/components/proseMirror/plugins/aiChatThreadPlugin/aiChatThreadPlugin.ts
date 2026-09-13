@@ -85,6 +85,9 @@ import { CapabilityChatRunProgressController } from '$src/components/proseMirror
 import {
     type PromptReferencePreviewRenderer,
 } from '@lixpi/canvas-components-lixpi-specific/frontend/context'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 
 const IS_RECEIVING_TEMP_DEBUG_STATE = false // For debug purposes only
 
@@ -126,6 +129,7 @@ type SendAiRequestHandler = (
 ) => void | Promise<void>
 type StopAiRequestHandler = (data: AiInteractionChatStopMessagePayload) => void
 export type AiChatThreadRenderContext = {
+    auth?: AuthTokenProvider
     readOnly?: boolean
     traceDetailsOptions?: ImageGenerationTraceDetailsOptions
     contextPreview?: AiUserMessageContextPreviewRenderer
@@ -4367,6 +4371,7 @@ class AiChatThreadPluginClass {
                         node,
                         view,
                         getPos,
+                        this.renderContext.auth,
                     ),
                     // Note: aiGeneratedImage is handled by imageSelectionPlugin for bubble menu integration
                 },

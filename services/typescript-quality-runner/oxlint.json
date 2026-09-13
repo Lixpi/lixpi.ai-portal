@@ -187,7 +187,10 @@
             }
         },
         {
-            "files": ["services/web-ui/src/**/*.ts"],
+            "files": [
+                "services/web-ui/src/**/*.ts",
+                "services/web-ui-user-portal/src/**/*.ts"
+            ],
             "excludeFiles": [
                 "**/*.test.ts",
                 "services/web-ui/src/components/proseMirror/plugins/testUtils/**"
@@ -215,6 +218,7 @@
         {
             "files": [
                 "services/web-ui/**/*.ts",
+                "services/web-ui-user-portal/**/*.ts",
                 "services/ai-model-registry/src/client/**/*.ts",
                 "packages/lixpi/**/src/frontend/**/*.ts",
                 "packages/lixpi/canvas-engine/examples/**/*.ts",
@@ -222,7 +226,9 @@
                 "packages/lixpi/debug-tools/**/*.ts",
                 "packages/lixpi/prosemirror/**/*.ts",
                 "packages/lixpi/ui-kit/**/*.ts",
-                "packages/lixpi/ui-primitives/**/*.ts"
+                "packages/lixpi/ui-primitives/**/*.ts",
+                "packages/lixpi/auth-client/**/*.ts",
+                "packages/lixpi/web-client-service-factory/**/*.ts"
             ],
             "rules": {
                 "lixpi/no-native-console-logging": "off"

@@ -1,6 +1,8 @@
 import { NATS_SUBJECTS } from '@lixpi/constants'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 
-import AuthService from '$src/services/auth-service.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
 
 const { MEDIA_DESCRIBE } = NATS_SUBJECTS.AI_INTERACTION_SUBJECTS
@@ -17,15 +19,18 @@ export type DescribeMediaResult = {
 // file/final frame, or a video's representative frame/poster). Generated and
 // uploaded media use the same path. The MP4 is never sent — the caller resolves
 // the Asset ID. The API owns rendition selection and the descriptor VLM choice.
-export const describeMedia = async ({
-    assetId,
-    aiModel,
-    workspaceId,
-}: {
-    assetId: string
-    aiModel?: string
-    workspaceId?: string
-}): Promise<DescribeMediaResult> => {
+export const describeMedia = async (
+    auth: AuthTokenProvider,
+    {
+        assetId,
+        aiModel,
+        workspaceId,
+    }: {
+        assetId: string
+        aiModel?: string
+        workspaceId?: string
+    },
+): Promise<DescribeMediaResult> => {
     const nats = servicesStore.getData('nats')
 
     if (!nats)
@@ -34,7 +39,7 @@ export const describeMedia = async ({
     return nats.request(
         MEDIA_DESCRIBE,
         {
-            token: await AuthService.getTokenSilently(),
+            token: await auth.getTokenSilently(),
             assetId,
             ...(workspaceId ? { workspaceId } : {}),
             ...(aiModel ? { aiModel } : {}),

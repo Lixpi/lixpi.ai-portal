@@ -7,6 +7,10 @@ description: Lixpi's authentication model — Auth0/LocalAuth0 RS256 JWTs for us
 
 Authentication in Lixpi is split across two checks that work together. NATS handles connection-level permissions through an auth callout. The API also verifies the user JWT on each browser-originated NATS request before running the subject handler.
 
+The main SPA and the user portal share browser identity behavior through `@lixpi/auth-client`. Each service creates its own auth client in its dependency lifecycle, maps the transport-neutral session into its own NATS connection, and injects both dependencies through `@lixpi/web-client-service-factory`. Production serves the clients from different origins: the main application uses the stack domain and the portal uses `user-portal.<domain>`. Each origin has its own Auth0 SDK token cache, but both use the same Auth0 application and Universal Login session. Opening the portal can therefore complete a silent authorization round trip without asking an already signed-in user for credentials again.
+
+Auth0 must list the portal URL in Allowed Callback URLs, Allowed Logout URLs, and Allowed Web Origins. The NATS WebSocket `allowed_origins` list must include both the main and portal origins; Pulumi adds both for AWS stacks.
+
 NATS keeps static credentials for trusted backend connections such as the system user and the API service account that runs the callout responder. Browser users, self-issued internal-service JWT clients, and NATS-native internal tools such as NEX are delegated to the auth callout.
 
 This page explains the conceptual auth model. The AWS-specific certificate and TLS wiring lives in [NATS Cluster](./deployment/NATS-CLUSTER.md) and is linked where relevant.

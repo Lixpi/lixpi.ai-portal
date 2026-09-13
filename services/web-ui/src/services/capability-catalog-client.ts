@@ -1,12 +1,16 @@
 import { CapabilityCatalogClient } from '@lixpi/capability-system/frontend'
+import {
+    type AuthTokenProvider,
+    type UserStateStore,
+} from '@lixpi/auth-client'
 
-import AuthService from '$src/services/auth-service.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
-import { userStore } from '$src/stores/userStore.ts'
 
 export * from '@lixpi/capability-system/frontend'
 
 export const createDefaultCapabilityCatalogClient = (
+    auth: AuthTokenProvider,
+    userStore: UserStateStore,
     workspaceId: string,
     organizationId: string,
 ): CapabilityCatalogClient => {
@@ -29,7 +33,7 @@ export const createDefaultCapabilityCatalogClient = (
                 return nats.subscribe(subject, listener)
             },
         },
-        getToken: () => AuthService.getTokenSilently(),
+        getToken: () => auth.getTokenSilently(),
         workspaceId,
         organizationId,
         getUserId: () => userStore.getData('userId') as string,

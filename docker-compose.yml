@@ -431,6 +431,7 @@ services:
             VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID}
             VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE}
             VITE_AUTH0_REDIRECT_URI: ${VITE_AUTH0_REDIRECT_URI}
+            VITE_USER_PORTAL_URL: ${VITE_USER_PORTAL_URL}
             VITE_STRIPE_PUBLIC_KEY: ${VITE_STRIPE_PUBLIC_KEY}
             VITE_NATS_SERVER: ${VITE_NATS_SERVER}
         volumes:
@@ -494,6 +495,42 @@ services:
         #     lixpi-nex-1:
         #         condition: service_healthy
         #         restart: true
+
+    lixpi-web-ui-user-portal:
+        container_name: lixpi-web-ui-user-portal
+        profiles: ["main"]
+        image: lixpi/web-ui-user-portal
+        build:
+            dockerfile: services/web-ui-user-portal/Dockerfile
+            context: .
+        environment:
+            VITE_MOCK_AUTH: ${VITE_MOCK_AUTH}
+            VITE_MOCK_AUTH0_DOMAIN: ${VITE_MOCK_AUTH0_DOMAIN}
+            VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN}
+            VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID}
+            VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE}
+            VITE_AUTH0_REDIRECT_URI: ${VITE_USER_PORTAL_URL}
+            VITE_USER_PORTAL_URL: ${VITE_USER_PORTAL_URL}
+            VITE_NATS_SERVER: ${VITE_NATS_SERVER}
+        volumes:
+            - ./services/web-ui-user-portal/Dockerfile:/usr/src/service/Dockerfile:cached
+            - ./services/web-ui-user-portal/index.html:/usr/src/service/index.html:cached
+            - ./services/web-ui-user-portal/package.json:/usr/src/service/package.json:cached
+            - ./services/web-ui-user-portal/src:/usr/src/service/src:cached
+            - ./services/web-ui-user-portal/vite.config.ts:/usr/src/service/vite.config.ts:cached
+            - ./services/web-ui-user-portal/tsconfig.json:/usr/src/service/tsconfig.json:cached
+            - ./packages/lixpi:/usr/src/host-packages/lixpi:ro,cached
+            - ./scripts/docker/workspace-package-sync.sh:/usr/local/bin/workspace-package-sync.sh:ro,cached
+        networks:
+            - nats
+        working_dir: /usr/src/service
+        command: >
+            /usr/local/bin/workspace-package-sync.sh run
+            sh -c "pnpm i --config.confirm-modules-purge=false
+            && pnpm run dev"
+        stop_signal: SIGTERM
+        ports:
+            - 3002:5173
 
     lixpi-api:
         container_name: lixpi-api
@@ -739,6 +776,7 @@ services:
             VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID}
             VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE}
             VITE_AUTH0_REDIRECT_URI: ${VITE_AUTH0_REDIRECT_URI}
+            VITE_USER_PORTAL_URL: ${VITE_USER_PORTAL_URL}
             VITE_STRIPE_PUBLIC_KEY: ${VITE_STRIPE_PUBLIC_KEY}
             VITE_NATS_SERVER: ${VITE_NATS_SERVER}
 

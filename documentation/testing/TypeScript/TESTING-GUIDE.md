@@ -1,53 +1,53 @@
-# TypeScript Testing Guide
+---
+title: TypeScript Testing
+description: Shared TypeScript test commands, infrastructure, and test-writing conventions.
+---
 
-Shared conventions for writing TypeScript tests across Lixpi services. Service-specific setup, runners, path aliases, and verification commands live in the per-service guides below this one, such as [`web-ui`](web-ui/TESTING-GUIDE.md).
+# TypeScript Testing
+
+This guide owns TypeScript testing across services and shared packages. A service does not get another testing guide just to repeat its domain name, Vitest environment, or runner command.
 
 Read `documentation/testing/USING-TESTING-GUIDES.md` first. Never write, modify, or run tests unless the user explicitly asks for tests in the current thread; these conventions apply only once that test work is permitted.
 
 ## Test Runner Container
 
-All TypeScript tests — across `services/web-ui`, `services/api`, `services/nex`, and the individual `packages/lixpi/*` packages — run inside one image, `lixpi-typescript-test-runner`, defined in `docker-compose.typescript-test-runner.yml` and pulled into the root `docker-compose.yml` via its top-level `include:`. The app-runtime containers (`lixpi-web-ui`, `lixpi-api`, `lixpi-nex`) do not ship a test runner; tests are never executed there.
+All TypeScript service and package tests run inside `lixpi-typescript-test-runner`, defined in `docker-compose.typescript-test-runner.yml` and included by the root `docker-compose.yml`. Application containers do not ship a test runner.
 
-The test runner is invoked as a one-shot `docker compose run --rm` command, never a long-lived container — each invocation gets a fresh container (so it always reflects the current compose config) with a Compose auto-generated unique name (so concurrent invocations never collide).
+The test runner is invoked as a one-shot `docker compose run --rm` command. Each invocation gets the current Compose configuration and a generated container name, so concurrent runs do not collide.
 
-The commands below assume `.env` is already symlinked via `./set-env.sh` (see the repo root `README.md`) — Docker Compose only auto-loads a file literally named `.env`, and without it every variable in `docker-compose.yml` comes back unset. If you haven't run `./set-env.sh`, either run it once or add `--env-file .env.<your-env>` to each command below.
+The commands below assume `.env` is already symlinked via `./set-env.sh` (see the repository `README.md`). Docker Compose only auto-loads a file named `.env`; otherwise pass `--env-file .env.<your-env>`.
 
 Every invocation runs `pnpm install` before the test command, but this is normally fast, not a full reinstall: a shared `typescript-test-runner-pnpm-store` volume caches downloaded package content, and a `typescript-test-runner-node-modules-*` volume per workspace directory (domain root plus each bind-mounted `packages/lixpi/*` member) persists the linked `node_modules` output across runs, so `pnpm install` is normally an incremental no-op ("Already up to date") rather than a from-scratch install. Both volume groups are declared in `docker-compose.typescript-test-runner.yml`.
 
-If that cache itself is ever suspect (corrupted store, a stale `node_modules` link surviving a dependency rename/removal), wipe it with `./services/typescript-test-runner/nuke-cache.sh` — it removes every `lixpi_typescript-test-runner-*` volume, so the next run does a full install from scratch. This is not needed for routine dependency changes; `pnpm install` already reconciles `node_modules` against the lockfile on every run.
+If the cache is corrupt or keeps a stale workspace link after a dependency rename or removal, wipe it with `./services/typescript-test-runner/nuke-cache.sh`. The next run performs a clean install. Routine dependency changes do not need this because each invocation reconciles `node_modules` against the lockfile.
 
-Each service is fully self-contained and bind-mounted into the test-runner container exactly as it is — same `package.json`, `pnpm-workspace.yaml`, and `vitest.config.ts` the service itself owns, nothing duplicated. `packages/lixpi/*` packages are tied together by `packages/lixpi/pnpm-workspace.yaml` so `workspace:*` dependencies between them resolve. A single universal entrypoint script dispatches by domain:
+Each service is bind-mounted with its own `package.json`, `pnpm-workspace.yaml`, and `vitest.config.ts`. The runner does not duplicate service configuration. Shared packages use `packages/lixpi/pnpm-workspace.yaml` so `workspace:*` dependencies resolve.
 
-```bash
-docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner web-ui
-docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner api
-docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner nex
-docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner shared
-docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner docs-site
-docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner all
-```
-
-`docs-site` runs the source-registry and Markdoc link tests from `documentation/site`. It has its own dependency volume and a read-only repository mount for checking authored source paths. It does not run the documentation build or write rendered output. `all` runs service and shared-package suites; invoke `docs-site` separately.
-
-(`--rm` removes the container once it exits; `-T` disables pseudo-TTY allocation for non-interactive shells; `--no-deps` prevents Compose from starting unrelated services; both `--profile dev` and `--profile main` are required because the compose file has a cross-profile `depends_on` elsewhere that Compose validates regardless of which service you're targeting.)
-
-Pass a specific test file after the domain to target it (for `api`/`web-ui`/`nex`/`docs-site` — `shared` runs every `packages/lixpi/*` package that defines a `test:run` script):
+Use the same command for every configured service. The optional test path is relative to that service:
 
 ```bash
-docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner web-ui src/canvas-adapters/workspace-canvas.test.ts
+docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner <domain> [test-path]
 ```
 
-For `shared`, an optional first argument selects a single package by its directory name under `packages/lixpi` (e.g. `auth-service`, or `debug-tools`/`nats-service` as shorthand for their nested `ts/` subfolder); any remaining arguments are passed through to vitest:
+The domain dispatcher in `services/typescript-test-runner/run-tests.sh` lists the available domains. `docs-site` runs source-registry and Markdoc link tests without building the documentation site. `all` runs service and shared-package suites; invoke `docs-site` separately.
+
+`--rm` removes the container after the run, `-T` disables pseudo-TTY allocation, and `--no-deps` prevents unrelated services from starting. Both profiles are required because Compose validates cross-profile dependencies before selecting the target service.
+
+For `shared`, the optional package name comes before the optional test path:
 
 ```bash
-docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner shared auth-service
+docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner shared [package] [test-path]
 ```
 
-`shared` runs tests colocated inside whichever `packages/lixpi/*` package they belong to — the same colocation rule below applies there too, so a package's tests live right next to its source, not in a separate `tests/` directory. A `packages/lixpi/*` package only needs `vitest` as a devDependency and a `test:run` script once it actually has tests to run.
+Without a package name, `shared` runs every shared package that defines `test:run`. Package tests follow the same colocation rule as service tests.
+
+## Vitest Configuration
+
+Each domain owns its Vitest environment, include patterns, setup files, and aliases in `vitest.config.ts`. Browser clients use Happy DOM where their tests need DOM APIs. Add configuration to the domain rather than copying it into this guide or the shared runner.
 
 ## GitHub Actions
 
-The `CI` workflow runs `api`, `web-ui`, `nex`, `shared`, and `docs-site` as independent matrix jobs. Each job builds and invokes `lixpi-typescript-test-runner` through `docker-compose.typescript-test-runner.yml`; GitHub's host never installs pnpm, service dependencies, or Vitest.
+The `CI` workflow runs each configured service, shared-package, and documentation domain as an independent matrix job. Each job invokes the same test-runner image through `docker-compose.typescript-test-runner.yml`; the GitHub host does not install pnpm, service dependencies, or Vitest.
 
 CI sets non-secret local placeholder values for the Vite variables required by the test-runner Compose service and still uses `--no-deps`, so no application, NATS, auth, or database service starts. Pointing Compose at the one-shot runner file preserves the local image, mounts, dispatcher, and domain boundary without requiring a developer `.env` file or parsing the root application graph. The test matrix and formatting-and-linting matrix feed one stable `Required CI gate` status for branch rules.
 
@@ -208,6 +208,91 @@ function makeJob(overrides: Partial<Job> & { jobId: string; type: Job['type'] })
 ```
 
 The `overrides` pattern forces you to provide required discriminant fields (`jobId`, `type`) while giving everything else a default. This keeps tests focused on what matters.
+
+## Testing Classes with DOM Dependencies
+
+When a class requires DOM elements but the behavior under test does not render, create the smallest DOM-backed config that satisfies its constructor. Inject state through the class's public methods, then assert the resulting values and callbacks instead of testing unrelated rendering.
+
+```typescript
+const createMockConfig = () => {
+    const paneElement = document.createElement('div')
+    const viewportElement = document.createElement('div')
+
+    return {
+        paneElement,
+        viewportElement,
+        getTransform: () => [0, 0, 1] as [number, number, number],
+        panBy: vi.fn().mockResolvedValue(true),
+        onChange: vi.fn(),
+    }
+}
+```
+
+Creating DOM elements directly is allowed in tests. Production UI code remains governed by the DOM templating rules in the TypeScript coding guide.
+
+## Testing ProseMirror Code
+
+Use `prosemirror-test-builder` for ProseMirror documents and position tracking. Shared builders and helpers live under `services/web-ui/src/components/proseMirror/plugins/testUtils/`; extend those helpers instead of calculating node positions by hand in each test.
+
+```typescript
+import {
+    type NodeSelection,
+} from 'prosemirror-state'
+import {
+    aiImg,
+    createEditorState,
+    createStateWithNodeSelection,
+    doc,
+    img,
+    p,
+} from '$src/components/proseMirror/plugins/testUtils/prosemirrorTestUtils.ts'
+
+const testDocument = doc(p('Hello world'), img({ src: 'cat.jpg' }))
+const state = createEditorState(testDocument)
+```
+
+Builder defaults are separate from schema defaults. If a test checks a schema default, pass that value explicitly because omitting the attribute uses the builder's default.
+
+```typescript
+const node = aiImg({
+    imageData: 'data:image/png;base64,test',
+    responseId: '',
+})
+const state = createStateWithNodeSelection(
+    doc(node),
+    0,
+)
+const selection = state.selection as NodeSelection
+
+expect(selection.node.attrs.responseId).toBe('')
+```
+
+Use parameterized cases when several node types share behavior:
+
+```typescript
+const imageNodeCases = [
+    {
+        name: 'image',
+        createNode: () => img({ src: 'test.jpg' }),
+    },
+    {
+        name: 'aiGeneratedImage',
+        createNode: () => aiImg({ imageData: 'data:image/png;base64,test' }),
+    },
+] as const
+
+for (const testCase of imageNodeCases) {
+    it(`treats ${testCase.name} as a block node`, () => {
+        const state = createStateWithNodeSelection(
+            doc(testCase.createNode()),
+            0,
+        )
+        const selection = state.selection as NodeSelection
+
+        expect(selection.node.isBlock).toBe(true)
+    })
+}
+```
 
 ## What NOT To Do
 

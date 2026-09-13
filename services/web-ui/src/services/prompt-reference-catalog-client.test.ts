@@ -10,14 +10,13 @@ import { NATS_SUBJECTS } from '@lixpi/constants'
 const getData = vi.hoisted(() => vi.fn())
 const getTokenSilently = vi.hoisted(() => vi.fn())
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: { getTokenSilently },
-}))
 vi.mock('$src/stores/servicesStore.ts', () => ({
     servicesStore: { getData },
 }))
 
 import { createPromptReferenceCatalogClient } from './prompt-reference-catalog-client.ts'
+
+const auth = { getTokenSilently }
 
 beforeEach(() => {
     vi.clearAllMocks()
@@ -31,7 +30,7 @@ describe('PromptReferenceCatalogClient', () => {
             cursor: 'next-page',
         })
         getData.mockReturnValue({ request })
-        const client = createPromptReferenceCatalogClient('workspace-1', 'organization-1')
+        const client = createPromptReferenceCatalogClient(auth, 'workspace-1', 'organization-1')
 
         const page = await client.list({
             category: 'media',
@@ -54,7 +53,7 @@ describe('PromptReferenceCatalogClient', () => {
 
     it('fails before authentication when NATS is unavailable and surfaces API errors', async () => {
         getData.mockReturnValue(undefined)
-        const client = createPromptReferenceCatalogClient('workspace-1', 'organization-1')
+        const client = createPromptReferenceCatalogClient(auth, 'workspace-1', 'organization-1')
         await expect(client.list({ category: 'capabilities' }))
             .rejects.toThrow('Prompt-reference catalog requires an active NATS connection')
         expect(getTokenSilently).not.toHaveBeenCalled()
@@ -75,7 +74,7 @@ describe('PromptReferenceCatalogClient', () => {
                 },
             })
         getData.mockReturnValue({ request })
-        const client = createPromptReferenceCatalogClient('workspace-1', 'organization-1')
+        const client = createPromptReferenceCatalogClient(auth, 'workspace-1', 'organization-1')
 
         await expect(client.listModules('  CHARACTER  ')).resolves.toEqual([{ moduleId: 'character-creator' }])
         await expect(client.getModule('character-creator')).resolves.toMatchObject({

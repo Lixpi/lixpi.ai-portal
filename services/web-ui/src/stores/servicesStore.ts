@@ -1,11 +1,5 @@
-import { writable } from '$src/stores/nanoStore.ts'
-
 import { LoadingStatus } from '@lixpi/constants'
-
-import {
-    type ReadonlyDeep,
-} from 'type-fest'
-import { deepFreeze } from '$src/helpers/deepfreeze.ts'
+import { createStore } from '@lixpi/web-client-service-factory'
 
 type Meta = {
     loadingStatus: LoadingStatus
@@ -13,7 +7,6 @@ type Meta = {
 
 export type Services = {
     nats: any
-    userService: any
     subscriptionService: any
     aiModelService: any
     projectService: any
@@ -22,18 +15,15 @@ export type Services = {
     assetService: any
 }
 
-type NatsStore = {
+const initialState: {
     meta: Meta
     data: Services
-}
-
-const nats: ReadonlyDeep<NatsStore> = deepFreeze({
+} = {
     meta: {
         loadingStatus: LoadingStatus.idle,
     },
     data: {
         nats: null,
-        userService: null,
         subscriptionService: null,
         aiModelService: null,
         projectService: null,
@@ -41,50 +31,6 @@ const nats: ReadonlyDeep<NatsStore> = deepFreeze({
         workspaceService: null,
         assetService: null,
     },
-})
-
-const store = writable({ ...nats })
-
-export const servicesStore = {
-    ...store,
-    getMeta: (key: keyof Meta | null = null): any => {
-        let returnValue: any
-        const unsubscribe = store.subscribe(store => void (returnValue = key ? store.meta[key] : store.meta))
-        unsubscribe()
-
-        return returnValue
-    },
-    getData: (key: keyof Services | null = null): any => {
-        let returnValue: any
-        const unsubscribe = store.subscribe(store => void (returnValue = key ? store.data[key] : store.data))
-        unsubscribe()
-
-        return returnValue
-    },
-    setMetaValues: (values: Partial<Meta> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                meta: {
-                    ...state.meta,
-                    ...values,
-                },
-            }),
-        ),
-    setDataValues: (values: Partial<Services> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: {
-                    ...state.data,
-                    ...values,
-                },
-            }),
-        ),
-    resetStore: (): void =>
-        void store.update(
-            state => ({
-                ...nats,
-            }),
-        ),
 }
+
+export const servicesStore = createStore({ initialState })

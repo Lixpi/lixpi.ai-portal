@@ -15,8 +15,16 @@ import {
 } from '$src/components/proseMirror/promptControlFactories.ts'
 import { ProseMirrorEditor } from '$src/components/proseMirror/components/editor.ts'
 import { createDocumentHtml } from '@lixpi/ui-primitives/dom'
+import {
+    type AuthClientInstance,
+} from '@lixpi/auth-client'
+import {
+    type AssetService,
+} from '$src/services/asset-service.ts'
 
 export type PromptComposerEditorOptions = {
+    assetService: AssetService
+    auth: AuthClientInstance
     controlFactories?: PromptControlFactories
     promptReferenceCatalog?: PromptReferenceCatalogClient
     promptReferencePreviewRenderer?: PromptReferencePreviewRenderer
@@ -32,6 +40,8 @@ class PromptComposerEditorAdapter implements PromptComposerEditor {
     ) {
         const html = createDocumentHtml(request.host.ownerDocument)
         this.editor = new ProseMirrorEditor({
+            assetService: options.assetService,
+            auth: options.auth,
             editorMountElement: request.host,
             content: html`<div></div>` as HTMLDivElement,
             initialVal: request.initialContent,

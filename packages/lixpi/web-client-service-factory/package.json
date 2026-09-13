@@ -1,0 +1,29 @@
+{
+    "name": "@lixpi/web-client-service-factory",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "main": "./src/index.ts",
+    "scripts": {
+        "test:run": "vitest run"
+    },
+    "exports": {
+        ".": "./src/index.ts",
+        "./vite": "./src/vite/index.ts",
+        "./styles/foundation": {
+            "sass": "./styles/foundation.scss",
+            "style": "./styles/foundation.scss",
+            "default": "./styles/foundation.scss"
+        }
+    },
+    "dependencies": {
+        "@nanostores/persistent": "*",
+        "nanostores": "*"
+    },
+    "devDependencies": {
+        "happy-dom": "*",
+        "sass": "*",
+        "vite": "*",
+        "vitest": "*"
+    }
+}

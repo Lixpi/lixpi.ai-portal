@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => {
         workspaceData,
         routeWorkspaceId,
         request: vi.fn(),
+        navigateTo: vi.fn(),
         getTokenSilently: vi.fn(),
         setDataValues: vi.fn((values: Record<string, any>) => {
             if (values.canvasState)
@@ -58,18 +59,6 @@ const mocks = vi.hoisted(() => {
         updateWorkspace: vi.fn(),
     }
 })
-
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: mocks.getTokenSilently,
-    },
-}))
-
-vi.mock('$src/services/router-service.ts', () => ({
-    default: {
-        getRouteParams: vi.fn(() => ({ workspaceId: mocks.routeWorkspaceId })),
-    },
-}))
 
 vi.mock('$src/stores/servicesStore.ts', () => ({
     servicesStore: {
@@ -113,7 +102,17 @@ vi.mock('$src/stores/workspacesStore.ts', () => ({
 }))
 
 import WorkspaceService from './workspace-service.ts'
+
+const createWorkspaceService = (router: ConstructorParameters<typeof WorkspaceService>[0]['router']): WorkspaceService => new WorkspaceService({
+    auth: { getTokenSilently: mocks.getTokenSilently },
+    router,
+})
 import { WORKSPACE_ROUTE_LOAD_REQUEST_TIMEOUT_MS } from './requestTimeouts.ts'
+
+const router = {
+    getRouteParams: () => ({ workspaceId: mocks.routeWorkspaceId }),
+    navigateTo: mocks.navigateTo,
+}
 
 const makeCanvasState = (nodeId: string) => ({
     viewport: {
@@ -165,7 +164,7 @@ describe('WorkspaceService canvas save queue', () => {
                 canvasStateUpdatedAt: 7,
             })
 
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         const firstState = makeCanvasState('first-node')
         const secondState = makeCanvasState('second-node')
 
@@ -220,7 +219,7 @@ describe('WorkspaceService canvas save queue', () => {
                 canvasStateUpdatedAt: 7,
             })
 
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         const firstState = makeCanvasState('persisted-node')
         const secondState = makeCanvasState('queued-node')
 
@@ -271,7 +270,7 @@ describe('WorkspaceService canvas save queue', () => {
             canvasStateUpdatedAt: 6,
         })
 
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         const uploadedImageState = makeCanvasState('uploaded-image')
 
         service.updateCanvasState({
@@ -300,7 +299,7 @@ describe('WorkspaceService canvas save queue', () => {
             canvasStateUpdatedAt: 11,
         })
 
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         const firstLegacyState = makeCanvasState('legacy-upload-image')
 
         service.updateCanvasState({
@@ -326,7 +325,7 @@ describe('WorkspaceService canvas save queue', () => {
                 updatedAt: 20,
                 canvasState: makeCanvasState('authoritative'),
             })
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         service.updateCanvasState({
             workspaceId: 'workspace-1',
             canvasState: makeCanvasState('stale-node'),
@@ -346,7 +345,7 @@ describe('WorkspaceService canvas save queue', () => {
                 updatedAt: 20,
                 canvasState: makeCanvasState('authoritative'),
             })
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         service.updateCanvasState({
             workspaceId: 'workspace-1',
             canvasState: makeCanvasState('stale-node'),
@@ -368,7 +367,7 @@ describe('WorkspaceService canvas save queue', () => {
             canvasStateUpdatedAt: 13,
         })
 
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         const staleState = makeCanvasState('no-token')
 
         service.updateCanvasState({
@@ -397,7 +396,7 @@ describe('WorkspaceService canvas save queue', () => {
                 canvasStateUpdatedAt: 19,
             })
 
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         const stateA = makeCanvasState('state-a')
         const stateB = makeCanvasState('state-b')
 
@@ -442,7 +441,7 @@ describe('WorkspaceService canvas save queue', () => {
                 canvasStateUpdatedAt: 7,
             })
 
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         const getWorkspaceSpy = vi.spyOn(service as unknown as { getWorkspace: (args: { workspaceId: string }) => Promise<void> }, 'getWorkspace')
             .mockResolvedValue(undefined)
         const staleState = makeCanvasState('stale-node')
@@ -478,7 +477,7 @@ describe('WorkspaceService canvas save queue', () => {
                 updatedAt: 12,
                 canvasStateUpdatedAt: 7,
             })
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         service.updateCanvasState({
             workspaceId: 'workspace-1',
             canvasState: makeCanvasState('stale-node'),
@@ -517,7 +516,7 @@ describe('WorkspaceService canvas save queue', () => {
                 updatedAt: 20,
                 canvasState: makeCanvasState('authoritative'),
             })
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         service.updateCanvasState({
             workspaceId: 'workspace-1',
             canvasState: makeCanvasState('stale-node'),
@@ -538,7 +537,7 @@ describe('WorkspaceService canvas save queue', () => {
                 updatedAt: 20,
                 canvasState: makeCanvasState('authoritative'),
             })
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         service.updateCanvasState({
             workspaceId: 'workspace-1',
             canvasState: makeCanvasState('stale-node'),
@@ -562,7 +561,7 @@ describe('WorkspaceService canvas save queue', () => {
                 canvasStateUpdatedAt: 7,
             })
 
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         service.updateCanvasState({
             workspaceId: 'workspace-1',
             canvasState: makeCanvasState('first-node'),
@@ -608,7 +607,7 @@ describe('WorkspaceService canvas save queue', () => {
         const observedRevisions: number[] = []
         let secondMutationStarted = false
         let thirdMutationStarted = false
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
 
         const firstMutation = service.runCanvasMembershipMutation({
             workspaceId: 'workspace-1',
@@ -666,7 +665,7 @@ describe('WorkspaceService canvas save queue', () => {
             canvasStateUpdatedAt: 7,
         })
 
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         const membershipMutation = service.runCanvasMembershipMutation({
             workspaceId: 'workspace-1',
             mutation: async () => {
@@ -695,7 +694,7 @@ describe('WorkspaceService canvas save queue', () => {
     })
 
     it('drops queued saves included in the next serialized membership mutation', async () => {
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         const first = Promise.withResolvers<void>()
         const firstMutation = service.runCanvasMembershipMutation({
             workspaceId: 'workspace-1',
@@ -738,7 +737,7 @@ describe('WorkspaceService state loading', () => {
     })
 
     it('loads workspace data and normalizes missing canvas state edges', async () => {
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         mocks.request.mockResolvedValueOnce({
             workspaceId: 'workspace-1',
             name: 'Project',
@@ -775,7 +774,7 @@ describe('WorkspaceService state loading', () => {
 
     it('does nothing with workspace payload when the active route changed', async () => {
         mocks.routeWorkspaceId = 'other-workspace'
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         mocks.request.mockResolvedValueOnce({
             workspaceId: 'workspace-1',
             updatedAt: 10,
@@ -794,7 +793,7 @@ describe('WorkspaceService state loading', () => {
 
     it('keeps stale canvas cleared when the active workspace load times out', async () => {
         const timeout = new Error('timeout')
-        const service = new WorkspaceService()
+        const service = createWorkspaceService(router)
         mocks.request.mockRejectedValueOnce(timeout)
 
         await service.getWorkspace({ workspaceId: 'workspace-1' })

@@ -1,5 +1,6 @@
 packages:
   - "auth-service"
+  - "auth-client"
   - "capability-system"
   - "canvas-engine"
   - "canvas-components"
@@ -15,6 +16,7 @@ packages:
   - "ui-kit-gentelella"
   - "ui-primitives"
   - "usage-reporter"
+  - "web-client-service-factory"
 
 # Shared tests install the complete package workspace. These are the build
 # dependencies explicitly allowed by the service workspaces that consume it.

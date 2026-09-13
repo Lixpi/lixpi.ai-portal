@@ -36,31 +36,9 @@ let consoleErrorSpy: { mockRestore: () => void } | null = null
 
 vi.mock('uuid', () => ({ v4: mocks.uuid }))
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: mocks.getTokenSilently,
-    },
-}))
-
-vi.mock('$src/services/asset-service.ts', () => ({
-    default: class MockAssetService {
-        acquireLease = mocks.acquireLease
-        renewLease = mocks.renewLease
-        releaseLease = mocks.releaseLease
-        get = mocks.get
-        fetchDocumentSnapshot = mocks.fetchDocumentSnapshot
-    },
-}))
-
 vi.mock('$src/stores/servicesStore.ts', () => ({
     servicesStore: {
         getData: mocks.getData,
-    },
-}))
-
-vi.mock('$src/stores/userStore.ts', () => ({
-    userStore: {
-        getData: vi.fn(() => 'user-1'),
     },
 }))
 
@@ -174,6 +152,18 @@ const eventSubject = getAssetDocumentEventSubject('user-1', {
     role: coordinate.role,
 })
 
+const dependencies = {
+    assetService: {
+        acquireLease: mocks.acquireLease,
+        renewLease: mocks.renewLease,
+        releaseLease: mocks.releaseLease,
+        get: mocks.get,
+        fetchDocumentSnapshot: mocks.fetchDocumentSnapshot,
+    } as never,
+    auth: { getTokenSilently: mocks.getTokenSilently },
+    userStore: { getData: () => 'user-1' } as never,
+}
+
 describe('ProseMirrorAuthorityService', () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -217,6 +207,7 @@ describe('ProseMirrorAuthorityService', () => {
         const onLeaseStateChange = vi.fn()
 
         const service = new ProseMirrorAuthorityService({
+            ...dependencies,
             ...coordinate,
             baseVersion: 0,
             getView: () => view,
@@ -258,6 +249,7 @@ describe('ProseMirrorAuthorityService', () => {
         const { view } = createView()
 
         const service = new ProseMirrorAuthorityService({
+            ...dependencies,
             ...coordinate,
             baseVersion: 0,
             receiveOnly: true,
@@ -296,6 +288,7 @@ describe('ProseMirrorAuthorityService', () => {
         const onLeaseStateChange = vi.fn()
 
         const service = new ProseMirrorAuthorityService({
+            ...dependencies,
             ...coordinate,
             baseVersion: 0,
             getView: () => view,
@@ -357,6 +350,7 @@ describe('ProseMirrorAuthorityService', () => {
         })
 
         const service = new ProseMirrorAuthorityService({
+            ...dependencies,
             ...coordinate,
             baseVersion: 0,
             getView: () => view,
@@ -420,6 +414,7 @@ describe('ProseMirrorAuthorityService', () => {
         const { view } = createView()
 
         const service = new ProseMirrorAuthorityService({
+            ...dependencies,
             ...coordinate,
             baseVersion: 0,
             getView: () => view,
@@ -476,6 +471,7 @@ describe('ProseMirrorAuthorityService', () => {
         const { view } = createView()
 
         const service = new ProseMirrorAuthorityService({
+            ...dependencies,
             ...coordinate,
             baseVersion: 0,
             getView: () => view,
@@ -553,6 +549,7 @@ describe('ProseMirrorAuthorityService', () => {
         const { view } = createView()
 
         const service = new ProseMirrorAuthorityService({
+            ...dependencies,
             ...coordinate,
             baseVersion: 0,
             getView: () => view,
@@ -629,6 +626,7 @@ describe('ProseMirrorAuthorityService', () => {
         const { view } = createView()
 
         const service = new ProseMirrorAuthorityService({
+            ...dependencies,
             ...coordinate,
             baseVersion: 0,
             getView: () => view,
@@ -660,6 +658,7 @@ describe('ProseMirrorAuthorityService', () => {
 
         const { view } = createView()
         const service = new ProseMirrorAuthorityService({
+            ...dependencies,
             ...coordinate,
             baseVersion: 0,
             getView: () => view,

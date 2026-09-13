@@ -32,14 +32,6 @@ afterEach(() => {
     for (const events of generationEventsForTests.splice(0)) events.destroy()
 })
 
-const authTokenMock = vi.hoisted(() => vi.fn(async () => 'token-123'))
-
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: authTokenMock,
-    },
-}))
-
 let consoleErrorSpy: { mockRestore: () => void } | null = null
 let consoleWarnSpy: { mockRestore: () => void } | null = null
 

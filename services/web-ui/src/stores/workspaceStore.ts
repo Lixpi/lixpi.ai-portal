@@ -1,20 +1,14 @@
-import { writable } from '$src/stores/nanoStore.ts'
 import {
     createDefaultCanvasState,
     workspaceCanvasLoadPatch,
     workspaceCanvasStatePatch,
 } from '@lixpi/canvas-components-lixpi-specific/shared'
-
 import {
     LoadingStatus,
-    type Workspace,
     type CanvasState,
+    type Workspace,
 } from '@lixpi/constants'
-
-import {
-    type ReadonlyDeep,
-} from 'type-fest'
-import { deepFreeze } from '$src/helpers/deepfreeze.ts'
+import { createStore } from '@lixpi/web-client-service-factory'
 
 type Meta = {
     loadingStatus: LoadingStatus
@@ -26,12 +20,12 @@ type WorkspaceData = Omit<Workspace, 'accessList'> & {
     error?: unknown
 }
 
-type WorkspaceStore = {
+type WorkspaceStoreState = {
     meta: Meta
     data: WorkspaceData
 }
 
-const workspace: ReadonlyDeep<WorkspaceStore> = deepFreeze({
+const initialState: WorkspaceStoreState = {
     meta: {
         loadingStatus: LoadingStatus.idle,
         isInEdit: false,
@@ -46,83 +40,48 @@ const workspace: ReadonlyDeep<WorkspaceStore> = deepFreeze({
         canvasStateUpdatedAt: 0,
         updatedAt: 0,
     },
-})
-
-const store = writable({ ...workspace })
-
-export const workspaceStore = {
-    ...store,
-    getMeta: (key: keyof Meta | null = null): any => {
-        let returnValue: any
-        const unsubscribe = store.subscribe(state => void (returnValue = key ? state.meta[key] : state.meta))
-        unsubscribe()
-
-        return returnValue
-    },
-    getData: (key: keyof WorkspaceData | null = null): any => {
-        let returnValue: any
-        const unsubscribe = store.subscribe(state => void (returnValue = key ? state.data[key] : state.data))
-        unsubscribe()
-
-        return returnValue
-    },
-    setMetaValues: (values: Partial<Meta> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                meta: {
-                    ...state.meta,
-                    ...values,
-                },
-            }),
-        ),
-    setDataValues: (values: Partial<WorkspaceData> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: {
-                    ...state.data,
-                    ...values,
-                },
-            }),
-        ),
-    beginWorkspaceLoad: (workspaceId: string): void =>
-        void store.update(state => {
-            const canvas = workspaceCanvasLoadPatch()
-
-            return {
-                ...state,
-                meta: {
-                    ...state.meta,
-                    loadingStatus: LoadingStatus.loading,
-                    ...canvas.meta,
-                },
-                data: {
-                    ...state.data,
-                    workspaceId,
-                    name: '',
-                    error: null,
-                    ...canvas.data,
-                    createdAt: 0,
-                    updatedAt: 0,
-                },
-            }
-        }),
-    updateCanvasState: (canvasState: CanvasState): void =>
-        void store.update(state => {
-            const canvas = workspaceCanvasStatePatch(canvasState, 'local-intent')
-
-            return {
-                ...state,
-                meta: {
-                    ...state.meta,
-                    ...canvas.meta,
-                },
-                data: {
-                    ...state.data,
-                    ...canvas.data,
-                },
-            }
-        }),
-    resetStore: (): void => void store.set({ ...workspace }),
 }
+
+export const workspaceStore = createStore({
+    initialState,
+    createMethods: store => ({
+        beginWorkspaceLoad: (workspaceId: string): void =>
+            void store.update(state => {
+                const canvas = workspaceCanvasLoadPatch()
+
+                return {
+                    ...state,
+                    meta: {
+                        ...state.meta,
+                        loadingStatus: LoadingStatus.loading,
+                        ...canvas.meta,
+                    },
+                    data: {
+                        ...state.data,
+                        workspaceId,
+                        name: '',
+                        error: null,
+                        ...canvas.data,
+                        createdAt: 0,
+                        updatedAt: 0,
+                    },
+                }
+            }),
+        updateCanvasState: (canvasState: CanvasState): void =>
+            void store.update(state => {
+                const canvas = workspaceCanvasStatePatch(canvasState, 'local-intent')
+
+                return {
+                    ...state,
+                    meta: {
+                        ...state.meta,
+                        ...canvas.meta,
+                    },
+                    data: {
+                        ...state.data,
+                        ...canvas.data,
+                    },
+                }
+            }),
+    }),
+})

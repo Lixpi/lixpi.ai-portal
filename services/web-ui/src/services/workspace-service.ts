@@ -2,6 +2,12 @@ import {
     WorkspaceCanvasSessionHub,
     normalizeWorkspaceCanvasState,
 } from '@lixpi/canvas-components-lixpi-specific/shared'
+import {
+    type WebClientRouterService,
+} from '@lixpi/web-client-service-factory'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 import { createWorkspacePersistencePorts } from '$src/canvas-adapters/workspace-persistence.ts'
 
 import {
@@ -12,19 +18,28 @@ import {
 
 const { WORKSPACE_SUBJECTS } = NATS_SUBJECTS
 
-import AuthService from '$src/services/auth-service.ts'
-import RouterService from '$src/services/router-service.ts'
 import { WORKSPACE_ROUTE_LOAD_REQUEST_TIMEOUT_MS } from '$src/services/requestTimeouts.ts'
 
 import { servicesStore } from '$src/stores/servicesStore.ts'
 import { workspacesStore } from '$src/stores/workspacesStore.ts'
 import { workspaceStore } from '$src/stores/workspaceStore.ts'
 
+type WorkspaceRouter = Pick<WebClientRouterService, 'getRouteParams' | 'navigateTo'>
+
+export type WorkspaceServiceConfig = {
+    auth: AuthTokenProvider
+    router: WorkspaceRouter
+}
+
 class WorkspaceService {
-    readonly canvasSessions = new WorkspaceCanvasSessionHub(createWorkspacePersistencePorts)
+    readonly canvasSessions: WorkspaceCanvasSessionHub
+
+    constructor(private readonly config: WorkspaceServiceConfig) {
+        this.canvasSessions = new WorkspaceCanvasSessionHub(() => createWorkspacePersistencePorts(config))
+    }
 
     public async getWorkspace({ workspaceId }: { workspaceId: string }): Promise<void> {
-        if (RouterService.getRouteParams().workspaceId !== workspaceId)
+        if (this.config.router.getRouteParams().workspaceId !== workspaceId)
             return
 
         workspaceStore.beginWorkspaceLoad(workspaceId)
@@ -33,13 +48,13 @@ class WorkspaceService {
             const workspace: any = await servicesStore.getData('nats')!.request(
                 WORKSPACE_SUBJECTS.GET_WORKSPACE,
                 {
-                    token: await AuthService.getTokenSilently(),
+                    token: await this.config.auth.getTokenSilently(),
                     workspaceId,
                 },
                 WORKSPACE_ROUTE_LOAD_REQUEST_TIMEOUT_MS,
             )
 
-            if (RouterService.getRouteParams().workspaceId !== workspaceId)
+            if (this.config.router.getRouteParams().workspaceId !== workspaceId)
                 return
 
             if (workspace.error) {
@@ -58,7 +73,7 @@ class WorkspaceService {
             workspaceStore.setDataValues(normalizedWorkspace)
             workspaceStore.setMetaValues({ loadingStatus: LoadingStatus.success })
         } catch (error) {
-            if (RouterService.getRouteParams().workspaceId !== workspaceId)
+            if (this.config.router.getRouteParams().workspaceId !== workspaceId)
                 return
 
             console.error('Failed to load workspace:', error)
@@ -74,7 +89,7 @@ class WorkspaceService {
             const response: any = await servicesStore.getData('nats')!.request(
                 WORKSPACE_SUBJECTS.GET_USER_WORKSPACES,
                 {
-                    token: await AuthService.getTokenSilently(),
+                    token: await this.config.auth.getTokenSilently(),
                 },
             )
 
@@ -94,7 +109,7 @@ class WorkspaceService {
             const workspace: any = await servicesStore.getData('nats')!.request(
                 WORKSPACE_SUBJECTS.CREATE_WORKSPACE,
                 {
-                    token: await AuthService.getTokenSilently(),
+                    token: await this.config.auth.getTokenSilently(),
                     name,
                 },
             )
@@ -126,7 +141,7 @@ class WorkspaceService {
                 updatedAt: workspace.updatedAt,
             }])
 
-            RouterService.navigateTo(
+            this.config.router.navigateTo(
                 '/workspace/:workspaceId',
                 {
                     params: { workspaceId: workspace.workspaceId },
@@ -151,7 +166,7 @@ class WorkspaceService {
             const result: any = await servicesStore.getData('nats')!.request(
                 WORKSPACE_SUBJECTS.UPDATE_WORKSPACE,
                 {
-                    token: await AuthService.getTokenSilently(),
+                    token: await this.config.auth.getTokenSilently(),
                     workspaceId,
                     name,
                 },
@@ -213,7 +228,7 @@ class WorkspaceService {
             const result: any = await servicesStore.getData('nats')!.request(
                 WORKSPACE_SUBJECTS.DELETE_WORKSPACE,
                 {
-                    token: await AuthService.getTokenSilently(),
+                    token: await this.config.auth.getTokenSilently(),
                     workspaceId,
                 },
             )
@@ -232,14 +247,14 @@ class WorkspaceService {
             workspacesStore.deleteWorkspace(deletedWorkspaceId)
 
             // Navigate to the next available workspace
-            const currentWorkspaceId = RouterService.getRouteParams().workspaceId
+            const currentWorkspaceId = this.config.router.getRouteParams().workspaceId
             const isDeletingCurrentlyOpenedWorkspace = currentWorkspaceId === deletedWorkspaceId
             const shiftedWorkspaceIndex = Math.max(currentWorkspaceIndex - 1, 0)
             const prevWorkspaceId = workspacesStore.getData()[shiftedWorkspaceIndex]?.workspaceId
 
             if (isDeletingCurrentlyOpenedWorkspace) {
                 if (prevWorkspaceId) {
-                    RouterService.navigateTo(
+                    this.config.router.navigateTo(
                         '/workspace/:workspaceId',
                         {
                             params: { workspaceId: prevWorkspaceId },
@@ -247,7 +262,7 @@ class WorkspaceService {
                         },
                     )
                 } else
-                    RouterService.navigateTo('/', { params: {} })
+                    this.config.router.navigateTo('/', { params: {} })
             }
 
             workspacesStore.setMetaValues({ loadingStatus: LoadingStatus.success })

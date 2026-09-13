@@ -172,6 +172,7 @@ Lixpi operates on a highly decoupled microservices architecture. All inter-servi
 graph TB
     subgraph "Client Tier"
         UI[TypeScript SPA<br/>@xyflow/system · ProseMirror]
+        Portal[User Portal SPA<br/>Gentelella]
     end
 
     subgraph "Gateway Tier"
@@ -198,6 +199,7 @@ graph TB
 
     UI <-->|WebSocket| NATS
     UI <-->|REST| API
+    Portal <-->|WebSocket| NATS
     API <-->|Publish/Subscribe| NATS
     API <--> DDB
     API --> LLM
@@ -210,6 +212,7 @@ graph TB
 | Service | Language | Role |
 |---------|----------|------|
 | **web-ui** | TypeScript | Browser SPA — canvas rendering, ProseMirror editors, AI chat UI, context extraction. Vanilla TypeScript DOM components with Nano Stores for state |
+| **web-ui-user-portal** | TypeScript | Account-management SPA at `user-portal.<domain>` with Gentelella UI backed by the shared browser auth, routing, and user Nano Stores |
 | **api** | Node.js / TypeScript | Gateway + in-process LangGraph workflow — Asset/Blob authority, JWT auth, DynamoDB persistence, pipeline events, Asset-document steps, generation and provenance |
 | **nats** | Go (3-node cluster) | Message bus — pub/sub, request/reply, JetStream replay/Asset-step streams, organization content-addressed Blob Object Stores |
 | **nex** | Node.js / TypeScript | NATS NEX workloads — AI-models sync and heavy file conversion/frame extraction |
@@ -220,6 +223,8 @@ graph TB
 **NATS-native**: The system uses NATS for auth, messaging, organization Blob Object Stores, live events, replay logs, and Asset-document step streams. The browser connects over WebSocket. The API remains the Asset/Blob authority and converts provider output into durable pipeline/provenance and document events.
 
 **Framework-agnostic canvas**: `WorkspaceCanvas.ts` is pure vanilla TypeScript with zero framework imports. It receives DOM elements and callbacks. The whole UI is vanilla TypeScript DOM built with the `html` helper in `@lixpi/ui-primitives/dom`, and component state lives in Nano Stores under `src/stores/`. This insulates the canvas from framework churn.
+
+**Shared browser services**: `@lixpi/auth-client` owns browser auth adapters, auth/user Nano Stores, authenticated sessions, feature defaults, and current-user loading. `@lixpi/web-client-service-factory` owns dependency-neutral application startup and teardown, routing, base Nano Store creation, route-driven views, and common Vite/Sass setup. Each SPA injects its runtime dependencies and owns its route table, product services, transport, and UI kit. The AI Model Registry browser client uses the same factory without auth or a browser NATS connection.
 
 **Provider-agnostic AI**: Every AI request sends the full conversation history — no provider-specific session IDs. Users can start a conversation with Claude, switch to GPT-5, switch to Gemini, and switch back. Adding a new provider means implementing the `BaseProvider` class in `services/api/src/llm/providers/`, which plugs into the shared LangGraph workflow.
 

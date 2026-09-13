@@ -2,7 +2,9 @@ import {
     type CanvasIngestReply,
     type CanvasUploadRequest,
 } from '@lixpi/canvas-components-lixpi-specific/frontend/workspace'
-import AuthService from '$src/services/auth-service.ts'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 
 const readReply = async (
     response: Response,
@@ -25,12 +27,15 @@ const readReply = async (
     }
 }
 
-export const uploadCanvasAsset = async ({
-    workspaceId,
-    file,
-    onStart,
-}: CanvasUploadRequest & { file: File }): Promise<CanvasIngestReply> => {
-    const token = await AuthService.getTokenSilently()
+export const uploadCanvasAsset = async (
+    auth: AuthTokenProvider,
+    {
+        workspaceId,
+        file,
+        onStart,
+    }: CanvasUploadRequest & { file: File },
+): Promise<CanvasIngestReply> => {
+    const token = await auth.getTokenSilently()
 
     if (
         !token
@@ -52,12 +57,15 @@ export const uploadCanvasAsset = async ({
     return await readReply(response, 'Upload failed')
 }
 
-export const importCanvasAssetUrl = async ({
-    workspaceId,
-    url,
-    onStart,
-}: CanvasUploadRequest & { url: string }): Promise<CanvasIngestReply> => {
-    const token = await AuthService.getTokenSilently()
+export const importCanvasAssetUrl = async (
+    auth: AuthTokenProvider,
+    {
+        workspaceId,
+        url,
+        onStart,
+    }: CanvasUploadRequest & { url: string },
+): Promise<CanvasIngestReply> => {
+    const token = await auth.getTokenSilently()
 
     if (
         !token

@@ -6,6 +6,7 @@ packages:
   - "packages/lixpi/ui-kit-gentelella"
   - "packages/lixpi/ui-primitives"
   - "packages/lixpi/usage-reporter"
+  - "packages/lixpi/web-client-service-factory"
 
 # Vite's own toolchain. Without these pnpm refuses the install rather than
 # silently skipping their build scripts.

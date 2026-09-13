@@ -1,0 +1,13 @@
+packages:
+  - "packages/lixpi/constants/ts"
+  - "packages/lixpi/debug-tools/ts"
+  - "packages/lixpi/nats-service/ts"
+  - "packages/lixpi/ui-kit-gentelella"
+  - "packages/lixpi/ui-primitives"
+  - "packages/lixpi/auth-client"
+  - "packages/lixpi/web-client-service-factory"
+
+allowBuilds:
+  "@parcel/watcher": true
+  browser-tabs-lock: true
+  esbuild: true
