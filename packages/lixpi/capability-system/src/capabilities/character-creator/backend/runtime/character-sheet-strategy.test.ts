@@ -24,6 +24,19 @@ import {
     type CharacterSheetStrategyDeps,
 } from './character-sheet-strategy.ts'
 
+// A provider transport failure carrying the HTTP status the retry classifier reads.
+class ProviderStatusError extends Error {
+    readonly status: number
+
+    constructor(
+        message: string,
+        status: number,
+    ) {
+        super(message)
+        this.status = status
+    }
+}
+
 const mocks = {
     clear: vi.fn(async () => undefined),
     compose: vi.fn(async () => ({
@@ -1124,7 +1137,7 @@ describe('CharacterSheetStrategy', () => {
     })
 
     it('does not silently rerun a failed required identity anchor', async () => {
-        mocks.render.mockRejectedValueOnce(Object.assign(new Error('capacity'), { status: 429 }))
+        mocks.render.mockRejectedValueOnce(new ProviderStatusError('capacity', 429))
         mocks.render.mockImplementation(async request => providerResult(request))
 
         await expect(strategy(async () => assessment(false)).execute(context(), plan(), {}))

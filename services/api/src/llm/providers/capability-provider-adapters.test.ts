@@ -331,17 +331,20 @@ describe('Capability provider adapters', () => {
             },
         }
         anthropicMocks.messagesStream
-            .mockReturnValueOnce(Object.assign(asyncStream([]), { finalMessage: vi.fn(async () => firstFinal) }))
-            .mockReturnValueOnce(Object.assign(
-                asyncStream([{
+            .mockReturnValueOnce({
+                ...asyncStream([]),
+                finalMessage: vi.fn(async () => firstFinal),
+            })
+            .mockReturnValueOnce({
+                ...asyncStream([{
                     type: 'content_block_delta',
                     delta: {
                         type: 'text_delta',
                         text: 'Found it.',
                     },
                 }]),
-                { finalMessage: vi.fn(async () => secondFinal) },
-            ))
+                finalMessage: vi.fn(async () => secondFinal),
+            })
         const search = vi.fn(async () => ({ items: [] }))
         const provider = new AnthropicProvider('instance', deps(search))
         const publisher = configure(provider)
@@ -401,17 +404,20 @@ describe('Capability provider adapters', () => {
             },
         }
         anthropicMocks.messagesStream
-            .mockReturnValueOnce(Object.assign(asyncStream([]), { finalMessage: vi.fn(async () => firstFinal) }))
-            .mockReturnValueOnce(Object.assign(
-                asyncStream([{
+            .mockReturnValueOnce({
+                ...asyncStream([]),
+                finalMessage: vi.fn(async () => firstFinal),
+            })
+            .mockReturnValueOnce({
+                ...asyncStream([{
                     type: 'content_block_delta',
                     delta: {
                         type: 'text_delta',
                         text: 'The action timeline is ready.',
                     },
                 }]),
-                { finalMessage: vi.fn(async () => secondFinal) },
-            ))
+                finalMessage: vi.fn(async () => secondFinal),
+            })
         const use = vi.fn(async () => ({
             ...capabilityRunResult(),
             output: {

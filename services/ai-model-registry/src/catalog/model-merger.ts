@@ -613,7 +613,7 @@ export class ModelMerger {
             lixpiLeaves.set(path, value)
         }
 
-        const fields: Record<string, FieldProvenance> = {}
+        let fields: Record<string, FieldProvenance> = {}
         const authored: string[] = []
         const overrides: string[] = []
         const conflicts: string[] = []
@@ -775,7 +775,10 @@ export class ModelMerger {
             )
 
             perProvider[inferenceProvider] = resolvedProvider.block
-            Object.assign(fields, resolvedProvider.fields)
+            fields = {
+                ...fields,
+                ...resolvedProvider.fields,
+            }
             drift.push(...resolvedProvider.drift)
             authored.push(...resolvedProvider.authoredOnly)
             overrides.push(...resolvedProvider.overrides)

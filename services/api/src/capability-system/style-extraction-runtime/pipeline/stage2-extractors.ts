@@ -181,7 +181,7 @@ export const runExtractors = async (
                 ),
             )
     
-            const axisExtractions: Record<string, AxisExtraction> = {}
+            let axisExtractions: Record<string, AxisExtraction> = {}
             const failedAxes: Array<{
                 axis: string
                 error: string
@@ -190,7 +190,10 @@ export const runExtractors = async (
                 const extractor = selected[index]!
 
                 if (result.status === 'fulfilled') {
-                    Object.assign(axisExtractions, result.value.axisExtractions)
+                    axisExtractions = {
+                        ...axisExtractions,
+                        ...result.value.axisExtractions,
+                    }
                     failedAxes.push(...result.value.failedAxes)
                 } else {
                     const message = result.reason instanceof Error ? result.reason.message : String(result.reason)

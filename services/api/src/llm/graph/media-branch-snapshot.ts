@@ -44,7 +44,13 @@ const mergeCandidateGroup = (
     const canonical = candidates.find(candidate => candidate.candidateId === activeTargetCandidateId)
         ?? candidates.find(candidate => candidate.candidateId === resolvedTargetCandidateId)
         ?? candidates[0]!
-    const fallback = Object.assign({}, ...candidates) as MediaBranchCandidateImage
+    const fallback = candidates.reduce(
+        (merged, source) => ({
+            ...merged,
+            ...source,
+        }),
+        {},
+    ) as MediaBranchCandidateImage
 
     return {
         ...fallback,

@@ -7,7 +7,7 @@ import process from 'node:process'
 import { pathToFileURL } from 'node:url'
 
 import stylelint from 'stylelint'
-import lixpiStylelintPlugins from './stylelint-lixpi-plugin.ts'
+import lixpiStylelintPlugins from './plugin.ts'
 
 // This adapter turns repository-relative CLI paths into the file and glob inputs Stylelint
 // expects inside the quality-runner container.

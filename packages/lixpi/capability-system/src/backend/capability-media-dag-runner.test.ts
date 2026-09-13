@@ -7,6 +7,19 @@ import {
 
 import { CapabilityMediaDagRunner } from './capability-media-dag-runner.ts'
 
+// A provider transport failure carrying the HTTP status the retry classifier reads.
+class ProviderStatusError extends Error {
+    readonly status: number
+
+    constructor(
+        message: string,
+        status: number,
+    ) {
+        super(message)
+        this.status = status
+    }
+}
+
 describe('CapabilityMediaDagRunner', () => {
     const nodes = [
         {
@@ -41,7 +54,7 @@ describe('CapabilityMediaDagRunner', () => {
                 attempts += 1
 
                 if (attempts === 1)
-                    throw Object.assign(new Error('capacity'), { status: 429 })
+                    throw new ProviderStatusError('capacity', 429)
 
                 return 'ok'
             },

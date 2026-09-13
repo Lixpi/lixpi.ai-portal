@@ -17,7 +17,7 @@
         },
         {
             "name": "lixpi",
-            "specifier": "/usr/src/quality-runner/lixpi-oxlint-plugin.ts"
+            "specifier": "/usr/src/quality-runner/src/oxlint/plugin.ts"
         }
     ],
     "ignorePatterns": [
@@ -78,6 +78,7 @@
         "lixpi/prefer-multiline-type-literal": "error",
         "lixpi/prefer-multiline-condition": "error",
         "lixpi/no-nested-ternary": "off",
+        "lixpi/no-object-assign": "error",
         "lixpi/prefer-void-arrow-body": "error",
         "no-restricted-imports": [
             "error",
@@ -174,13 +175,8 @@
         },
         {
             "files": [
-                "**/import-specifier-order.ts",
-                "**/lixpi-oxlint-plugin.ts",
-                "**/source-extension-runner.ts",
-                "**/stylelint-lixpi-plugin.ts",
-                "**/stylelint-runner.ts",
-                "**/stylelint.config.ts",
-                "**/typescript-format-runner.ts"
+                "**/quality-runner/src/**/*.ts",
+                "**/stylelint.config.ts"
             ],
             "rules": {
                 "lixpi/require-ast-formatter-rules": "error"

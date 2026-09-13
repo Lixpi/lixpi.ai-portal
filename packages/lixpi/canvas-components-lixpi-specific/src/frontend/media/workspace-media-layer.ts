@@ -488,7 +488,7 @@ export class WorkspaceMediaLayer {
                     bounds.height / 2,
                 ),
             )
-            const datum: TravelingOutlineDatum = {
+            let datum: TravelingOutlineDatum = {
                 id,
                 ...bounds,
                 radius,
@@ -514,16 +514,14 @@ export class WorkspaceMediaLayer {
                     size + outset * 2,
                     size / 2 + outset,
                 )
-                Object.assign(
-                    datum,
-                    {
-                        x: bounds.x + (bounds.width - size) / 2,
-                        y: bounds.y + (bounds.height - size) / 2,
-                        width: size,
-                        height: size,
-                        radius: size / 2,
-                    },
-                )
+                datum = {
+                    ...datum,
+                    x: bounds.x + (bounds.width - size) / 2,
+                    y: bounds.y + (bounds.height - size) / 2,
+                    width: size,
+                    height: size,
+                    radius: size / 2,
+                }
 
                 if (
                     nodePerimeter > 0

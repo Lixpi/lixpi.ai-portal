@@ -20,12 +20,7 @@ services:
             - ./services/typescript-quality-runner/run-quality.sh:/usr/src/quality-runner/run-quality.sh:ro,cached
             - ./services/typescript-quality-runner/test-quality.sh:/usr/src/quality-runner/test-quality.sh:ro,cached
             - ./services/typescript-quality-runner/fixtures:/usr/src/quality-runner/fixtures:ro,cached
-            - ./services/typescript-quality-runner/import-specifier-order.ts:/usr/src/quality-runner/import-specifier-order.ts:cached
-            - ./services/typescript-quality-runner/lixpi-oxlint-plugin.ts:/usr/src/quality-runner/lixpi-oxlint-plugin.ts:cached
-            - ./services/typescript-quality-runner/source-extension-runner.ts:/usr/src/quality-runner/source-extension-runner.ts:cached
-            - ./services/typescript-quality-runner/stylelint-lixpi-plugin.ts:/usr/src/quality-runner/stylelint-lixpi-plugin.ts:cached
-            - ./services/typescript-quality-runner/stylelint-runner.ts:/usr/src/quality-runner/stylelint-runner.ts:cached
-            - ./services/typescript-quality-runner/typescript-format-runner.ts:/usr/src/quality-runner/typescript-format-runner.ts:cached
+            - ./services/typescript-quality-runner/src:/usr/src/quality-runner/src:cached
             - ./services/typescript-quality-runner/dprint.json:/usr/src/quality-runner/dprint.json:ro,cached
             - ./services/typescript-quality-runner/oxfmt.json:/usr/src/quality-runner/oxfmt.json:ro,cached
             - ./services/typescript-quality-runner/oxlint.json:/usr/src/quality-runner/oxlint.json:ro,cached
@@ -42,7 +37,7 @@ services:
             - ./services/typescript-quality-runner/dprint.json:/usr/src/repository/dprint.json:ro,cached
             - ./services/typescript-quality-runner/oxlint.json:/usr/src/repository/.oxlintrc.json:ro,cached
             - ./services/typescript-quality-runner/fixtures:/usr/src/repository/services/typescript-quality-runner/fixtures:ro,cached
-            - ./services/typescript-quality-runner/import-specifier-order.ts:/usr/src/repository/services/typescript-quality-runner/import-specifier-order.ts:ro,cached
+            - ./services/typescript-quality-runner/src:/usr/src/repository/services/typescript-quality-runner/src:ro,cached
 
             # Application and library source. Package manifests are not mounted
             # into this writable tree, so dependency artifacts cannot leak.
