@@ -16,6 +16,7 @@ export type WebClientEnvironment = {
     VITE_AUTH0_CLIENT_ID: string
     VITE_AUTH0_AUDIENCE: string
     VITE_AUTH0_REDIRECT_URI: string
+    VITE_USER_PORTAL_URL: string
     VITE_NATS_SERVER: string
 }
 

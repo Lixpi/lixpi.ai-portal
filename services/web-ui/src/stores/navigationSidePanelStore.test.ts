@@ -200,23 +200,4 @@ describe('navigationSidePanelStore', () => {
         })
     })
 
-    // =============================================================================
-    // userInfoPanelStore — NON-PERSISTED INTERACTION STATE
-    // =============================================================================
-
-    describe('userInfoPanelStore', () => {
-        it('defaults to closed and is not persisted across a fresh import', async () => {
-            const { userInfoPanelStore } = await importFreshStore()
-            expect(userInfoPanelStore.get()).toBe(false)
-
-            userInfoPanelStore.set(true)
-            expect(userInfoPanelStore.get()).toBe(true)
-
-            expect(localStorage.getItem('userInfoPanel:state')).toBeNull()
-
-            vi.resetModules()
-            const reimported = await importFreshStore()
-            expect(reimported.userInfoPanelStore.get()).toBe(false)
-        })
-    })
 })

@@ -81,6 +81,7 @@ const {
     VITE_AUTH0_CLIENT_ID,
     VITE_AUTH0_AUDIENCE,
     VITE_AUTH0_REDIRECT_URI,
+    VITE_USER_PORTAL_URL,
     VITE_STRIPE_PUBLIC_KEY,
     VITE_NATS_SERVER,
 } = process.env
@@ -539,6 +540,7 @@ export const createInfrastructure = async () => {
             VITE_AUTH0_CLIENT_ID: VITE_AUTH0_CLIENT_ID!,
             VITE_AUTH0_AUDIENCE: VITE_AUTH0_AUDIENCE!,
             VITE_AUTH0_REDIRECT_URI: VITE_AUTH0_REDIRECT_URI!,
+            VITE_USER_PORTAL_URL: VITE_USER_PORTAL_URL!,
             VITE_NATS_SERVER: VITE_NATS_SERVER!,
         },
         dockerBuildContext: '/usr/src/service',
@@ -560,6 +562,7 @@ export const createInfrastructure = async () => {
             VITE_AUTH0_CLIENT_ID: VITE_AUTH0_CLIENT_ID!,
             VITE_AUTH0_AUDIENCE: VITE_AUTH0_AUDIENCE!,
             VITE_AUTH0_REDIRECT_URI: `https://${userPortalDomainName}`,
+            VITE_USER_PORTAL_URL: VITE_USER_PORTAL_URL!,
             VITE_NATS_SERVER: VITE_NATS_SERVER!,
         },
         dockerBuildContext: '/usr/src/service',

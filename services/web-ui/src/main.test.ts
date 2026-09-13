@@ -32,3 +32,14 @@ describe('web-ui stylesheet order', () => {
         ).toBe(true)
     })
 })
+
+describe('web-ui user portal configuration', () => {
+    it('passes the environment-provided user portal URL into the root layout', () => {
+        const expectedConfiguration = 'userPortalUrl: import.meta.env.VITE_USER_PORTAL_URL'
+
+        expect(
+            mainSource.includes(expectedConfiguration),
+            `main.ts should contain:\n${expectedConfiguration}`,
+        ).toBe(true)
+    })
+})

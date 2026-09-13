@@ -10,7 +10,7 @@ import { createLayout } from '$src/views/layouts/layout.ts'
 import '@lixpi/web-client-service-factory/styles/foundation'
 import '$src/styles.scss'
 
-const portalUrl = import.meta.env.VITE_AUTH0_REDIRECT_URI
+const portalUrl = import.meta.env.VITE_USER_PORTAL_URL
 type UserPortalDependencies = {
     auth: AuthClientInstance
     nats: NatsService

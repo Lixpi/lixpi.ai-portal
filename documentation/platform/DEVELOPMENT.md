@@ -105,7 +105,7 @@ docker compose up lixpi-web-ui   # requires .env set (./set-env.sh); override wi
 docker compose up lixpi-web-ui-user-portal
 ```
 
-The portal is served at `http://localhost:3002`. `VITE_USER_PORTAL_URL` supplies its distinct OAuth redirect URI while it continues to use the same identity-provider tenant, client ID, and API audience as `web-ui`.
+The portal is served at `http://localhost:3002`. `VITE_USER_PORTAL_URL` is required in the environment file and supplies the URL to both browser clients, so the avatar in `web-ui` opens the portal in a new tab and the portal uses the same value as its distinct OAuth redirect URI. Both clients continue to use the same identity-provider tenant, client ID, and API audience.
 
 ### API
 

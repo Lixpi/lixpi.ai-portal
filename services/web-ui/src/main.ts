@@ -95,6 +95,7 @@ const application = createWebClientService<WebUiDependencies>({
         assetService: servicesStore.getData('assetService'),
         auth,
         router,
+        userPortalUrl: import.meta.env.VITE_USER_PORTAL_URL,
         workspaceService: servicesStore.getData('workspaceService'),
     }),
     destroyDependencies: async ({ nats }) => await nats.disconnect(),

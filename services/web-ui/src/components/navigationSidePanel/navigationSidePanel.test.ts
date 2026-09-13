@@ -66,11 +66,10 @@ import { workspacesStore } from '$src/stores/workspacesStore.ts'
 import { workspaceStore } from '$src/stores/workspaceStore.ts'
 import { createAuthStore } from '@lixpi/auth-client'
 import { servicesStore } from '$src/stores/servicesStore.ts'
-import {
-    navigationSidePanelStore,
-    userInfoPanelStore,
-} from '$src/stores/navigationSidePanelStore.ts'
+import { navigationSidePanelStore } from '$src/stores/navigationSidePanelStore.ts'
 import { settings } from '$src/settings.ts'
+
+const USER_PORTAL_URL = 'https://user-portal.example.test'
 
 const makeWorkspace = (overrides: Partial<WorkspaceMeta> & { tags?: string[] } = {}): WorkspaceMeta => {
     return {
@@ -105,6 +104,7 @@ const mount = (): {
         auth,
         paneEl,
         router,
+        userPortalUrl: USER_PORTAL_URL,
         workspaceService,
     })
 
@@ -154,7 +154,6 @@ beforeEach(() => {
     servicesStore.resetStore()
     authStore.resetStore()
     navigationSidePanelStore.resetStore()
-    userInfoPanelStore.set(false)
 
     servicesStore.setDataValues({
         assetService: { loadWorkspaceAssets: mocks.loadWorkspaceAssets },
@@ -339,16 +338,16 @@ describe('NavigationSidePanel — avatar', () => {
         instance.destroy()
     })
 
-    it('opens the account/user-info panel when the avatar is clicked', () => {
+    it('opens the configured user portal in a new tab', () => {
         const {
             paneEl,
             instance,
         } = mount()
-        expect(userInfoPanelStore.get()).toBe(false)
+        const avatar = paneEl.querySelector<HTMLAnchorElement>('.navigation-side-panel-avatar')
 
-        paneEl.querySelector<HTMLElement>('.navigation-side-panel-avatar')?.click()
-
-        expect(userInfoPanelStore.get()).toBe(true)
+        expect(avatar?.href).toBe(`${USER_PORTAL_URL}/`)
+        expect(avatar?.target).toBe('_blank')
+        expect(avatar?.rel).toBe('noopener noreferrer')
 
         instance.destroy()
     })

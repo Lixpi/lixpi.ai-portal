@@ -20,8 +20,6 @@ const defaultState: NavigationSidePanelState = {
     width: null,
 }
 
-export const userInfoPanelStore = createStore({ initialState: false })
-
 export const navigationSidePanelStore = createStore({
     initialState: defaultState,
     createMethods: store => ({

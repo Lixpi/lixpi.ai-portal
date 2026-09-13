@@ -32,10 +32,7 @@ import {
 import { workspacesStore } from '$src/stores/workspacesStore.ts'
 import { workspaceStore } from '$src/stores/workspaceStore.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
-import {
-    navigationSidePanelStore,
-    userInfoPanelStore,
-} from '$src/stores/navigationSidePanelStore.ts'
+import { navigationSidePanelStore } from '$src/stores/navigationSidePanelStore.ts'
 
 const NAVIGATION_SIDE_PANEL_SETTINGS = settings.navigationSidePanel
 
@@ -44,6 +41,7 @@ export type NavigationSidePanelConfig = {
     auth: Pick<AuthClientInstance, 'authStore' | 'getTokenSilently'>
     paneEl: HTMLElement
     router: Pick<WebClientRouterService, 'getCurrentRoute' | 'navigateTo' | 'subscribe'>
+    userPortalUrl: string
     workspaceService: {
         createWorkspace: (input: { name: string }) => Promise<void>
         deleteWorkspace: (input: { workspaceId: string }) => Promise<void>
@@ -63,7 +61,7 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
     private readonly headerEl: HTMLDivElement
     private readonly listEl: HTMLDivElement
     private readonly footerEl: HTMLDivElement
-    private readonly avatarEl: HTMLSpanElement
+    private readonly avatarEl: HTMLAnchorElement
     private readonly importFileInput: HTMLInputElement
     private readonly sidePanel: SidePanelInstance
     private readonly auth: NavigationSidePanelConfig['auth']
@@ -81,13 +79,14 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
         this.listEl = html`<div className="navigation-side-panel-list"></div>` as HTMLDivElement
         this.footerEl = html`<div className="navigation-side-panel-footer"></div>` as HTMLDivElement
         this.avatarEl = html`
-            <span
+            <a
                 className="navigation-side-panel-avatar"
-                role="button"
                 aria-label="Account"
-                onclick=${this.openUserInfoPanel}
-            ></span>
-        ` as HTMLSpanElement
+                href=${config.userPortalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+            ></a>
+        ` as HTMLAnchorElement
         this.importFileInput = html`
             <input
                 type="file"
@@ -183,8 +182,6 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
             ></button>
         ` as HTMLButtonElement
     }
-
-    private openUserInfoPanel = (): void => void userInfoPanelStore.set(true)
 
     private renderAvatar = (): void => {
         const user = this.auth.authStore.getData('user') as {

@@ -6,7 +6,7 @@ The initial proof of concept exposes one authenticated route, `/`, which request
 
 ## Local development
 
-Run the service through Docker Compose. It is available at `http://localhost:3002` and uses the same local or hosted identity provider configuration as `web-ui`, with its own redirect URI.
+Run the service through Docker Compose. It is available at `http://localhost:3002` and uses the same local or hosted identity provider configuration as `web-ui`, with its own redirect URI. `VITE_USER_PORTAL_URL` is required in the environment file. `web-ui` reads it and opens this service in a new tab when the user clicks the sidebar avatar.
 
 The identity-provider application must allow the portal origin as a callback URL, logout URL, and web origin. Sharing the Auth0 tenant and application gives the two SPAs single sign-on, while each origin maintains its own browser token cache.
 

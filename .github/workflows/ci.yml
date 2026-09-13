@@ -80,6 +80,7 @@ jobs:
             VITE_AUTH0_CLIENT_ID: ci
             VITE_AUTH0_AUDIENCE: https://api.lixpi.test
             VITE_AUTH0_REDIRECT_URI: http://localhost
+            VITE_USER_PORTAL_URL: http://localhost:3002
             VITE_STRIPE_PUBLIC_KEY: pk_test_ci
             VITE_NATS_SERVER: ws://localhost:9222
         steps:

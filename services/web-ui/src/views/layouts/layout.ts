@@ -30,6 +30,7 @@ export type LayoutConfig = {
     assetService: AssetService
     auth: AuthClientInstance
     router: WebClientRouterService
+    userPortalUrl: string
     workspaceService: {
         createWorkspace: (input: { name: string }) => Promise<void>
         deleteWorkspace: (input: { workspaceId: string }) => Promise<void>
@@ -63,6 +64,7 @@ class Layout implements LayoutInstance {
             auth: config.auth,
             paneEl: navigationSidePanelPaneEl,
             router: config.router,
+            userPortalUrl: config.userPortalUrl,
             workspaceService: config.workspaceService,
         })
         this.viewOutlet = createRouteViewOutlet({
