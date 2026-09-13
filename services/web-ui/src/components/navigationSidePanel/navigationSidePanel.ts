@@ -6,6 +6,12 @@
 import {
     type WorkspaceMeta,
 } from '@lixpi/constants'
+import {
+    type AuthClientInstance,
+} from '@lixpi/auth-client'
+import {
+    type WebClientRouterService,
+} from '@lixpi/web-client-service-factory'
 
 import {
     html,
@@ -23,25 +29,26 @@ import {
     verticalTrippleDots,
 } from '@lixpi/ui-kit/svg'
 
-import routerService from '$src/services/router-service.ts'
-import WorkspaceService from '$src/services/workspace-service.ts'
-import AuthService from '$src/services/auth-service.ts'
-
 import { workspacesStore } from '$src/stores/workspacesStore.ts'
 import { workspaceStore } from '$src/stores/workspaceStore.ts'
-import { routerStore } from '$src/stores/routerStore.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
 import {
     navigationSidePanelStore,
     userInfoPanelStore,
 } from '$src/stores/navigationSidePanelStore.ts'
-import { authStore } from '$src/stores/authStore.ts'
 
 const NAVIGATION_SIDE_PANEL_SETTINGS = settings.navigationSidePanel
 
 export type NavigationSidePanelConfig = {
     // Host element the panel/backdrop/overlay/toggle/resize-handle mount into.
+    auth: Pick<AuthClientInstance, 'authStore' | 'getTokenSilently'>
     paneEl: HTMLElement
+    router: Pick<WebClientRouterService, 'getCurrentRoute' | 'navigateTo' | 'subscribe'>
+    workspaceService: {
+        createWorkspace: (input: { name: string }) => Promise<void>
+        deleteWorkspace: (input: { workspaceId: string }) => Promise<void>
+        getWorkspace: (input: { workspaceId: string }) => Promise<void>
+    }
 }
 
 export type NavigationSidePanelInstance = {
@@ -59,10 +66,16 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
     private readonly avatarEl: HTMLSpanElement
     private readonly importFileInput: HTMLInputElement
     private readonly sidePanel: SidePanelInstance
+    private readonly auth: NavigationSidePanelConfig['auth']
+    private readonly router: NavigationSidePanelConfig['router']
+    private readonly workspaceService: NavigationSidePanelConfig['workspaceService']
     private importTargetWorkspaceId: string | null = null
 
     constructor(config: NavigationSidePanelConfig) {
+        this.auth = config.auth
         this.paneEl = config.paneEl
+        this.router = config.router
+        this.workspaceService = config.workspaceService
         this.panelEl = html`<div className="navigation-side-panel"></div>` as HTMLDivElement
         this.headerEl = html`<div className="navigation-side-panel-header"></div>` as HTMLDivElement
         this.listEl = html`<div className="navigation-side-panel-list"></div>` as HTMLDivElement
@@ -150,12 +163,12 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
             workspacesStore.subscribe(this.renderWorkspaceList),
         )
         this.unsubscribers.push(
-            routerStore.subscribe(this.renderWorkspaceList),
+            this.router.subscribe(this.renderWorkspaceList),
         )
 
         this.renderAvatar()
         this.unsubscribers.push(
-            authStore.subscribe(this.renderAvatar),
+            this.auth.authStore.subscribe(this.renderAvatar),
         )
     }
 
@@ -174,7 +187,7 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
     private openUserInfoPanel = (): void => void userInfoPanelStore.set(true)
 
     private renderAvatar = (): void => {
-        const user = authStore.getData('user') as {
+        const user = this.auth.authStore.getData('user') as {
             picture?: string
             given_name?: string
             name?: string
@@ -251,7 +264,7 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
 
     private renderWorkspaceList = (): void => {
         const workspaces = workspacesStore.getData()
-        const currentWorkspaceId = routerStore.getData('currentRoute')?.routeParams?.workspaceId
+        const currentWorkspaceId = this.router.getCurrentRoute().routeParams.workspaceId
 
         for (const dropdown of this.workspaceDropdowns.values())
             dropdown.destroy()
@@ -336,7 +349,7 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
     }
 
     private handleWorkspaceClick(workspaceId: string): void {
-        routerService.navigateTo(
+        this.router.navigateTo(
             '/workspace/:workspaceId',
             {
                 params: { workspaceId },
@@ -346,18 +359,12 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
         workspaceStore.beginWorkspaceLoad(workspaceId)
     }
 
-    private handleCreateNewWorkspaceClick = async (): Promise<void> => {
-        const workspaceService = new WorkspaceService()
-        await workspaceService.createWorkspace({ name: 'New Workspace' })
-    }
+    private handleCreateNewWorkspaceClick = async (): Promise<void> => await this.workspaceService.createWorkspace({ name: 'New Workspace' })
 
-    private onWorkspaceDeleteHandler = async (workspaceId: string): Promise<void> => {
-        const workspaceService = new WorkspaceService()
-        await workspaceService.deleteWorkspace({ workspaceId })
-    }
+    private onWorkspaceDeleteHandler = async (workspaceId: string): Promise<void> => await this.workspaceService.deleteWorkspace({ workspaceId })
 
     private onWorkspaceExportHandler = async (workspaceId: string): Promise<void> => {
-        const token = await AuthService.getTokenSilently()
+        const token = await this.auth.getTokenSilently()
 
         if (!token)
             return
@@ -385,7 +392,7 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
         const workspaceId = this.importTargetWorkspaceId
         this.importTargetWorkspaceId = null
 
-        const token = await AuthService.getTokenSilently()
+        const token = await this.auth.getTokenSilently()
 
         if (!token)
             return
@@ -411,11 +418,10 @@ class NavigationSidePanel implements NavigationSidePanelInstance {
                 return
             }
 
-            const currentWorkspaceId = routerStore.getData('currentRoute')?.routeParams?.workspaceId
+            const currentWorkspaceId = this.router.getCurrentRoute().routeParams.workspaceId
 
             if (currentWorkspaceId === workspaceId) {
-                const workspaceService = new WorkspaceService()
-                await workspaceService.getWorkspace({ workspaceId })
+                await this.workspaceService.getWorkspace({ workspaceId })
                 await servicesStore.getData('assetService').loadWorkspaceAssets(workspaceId)
             }
         } catch (error) {

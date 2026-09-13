@@ -12,6 +12,7 @@ This guide gets Lixpi running locally. Everything runs in **Docker** via `docker
 | Service | Path | Purpose |
 |---------|------|---------|
 | **web-ui** | `services/web-ui/` | TypeScript SPA — canvas, ProseMirror editors, AI chat UI |
+| **web-ui-user-portal** | `services/web-ui-user-portal/` | TypeScript account-management SPA with Gentelella UI on `http://localhost:3002` |
 | **api** | `services/api/` | Node.js / TypeScript gateway — auth, CRUD, DynamoDB, plus the in-process LangGraph LLM workflow (pipeline events, ProseMirror transcript steps, image generation, video generation) |
 | **nats** | `services/nats/` | NATS message bus (3-node cluster) |
 | **localauth0** | `services/localauth0/` | Mock Auth0 for zero-config offline dev (Rust — vendored `primait/localauth0` image) |
@@ -96,6 +97,15 @@ start.bat
 # Then run the single service
 docker compose up lixpi-web-ui   # requires .env set (./set-env.sh); override with --env-file otherwise
 ```
+
+### User portal
+
+```shell
+./rebuild-containers.sh lixpi-web-ui-user-portal
+docker compose up lixpi-web-ui-user-portal
+```
+
+The portal is served at `http://localhost:3002`. `VITE_USER_PORTAL_URL` supplies its distinct OAuth redirect URI while it continues to use the same identity-provider tenant, client ID, and API audience as `web-ui`.
 
 ### API
 

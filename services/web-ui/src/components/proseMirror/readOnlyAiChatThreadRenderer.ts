@@ -14,9 +14,17 @@ import {
 import {
     type AiMediaGenerationProgressRenderer,
 } from '$src/components/proseMirror/plugins/aiChatThreadPlugin/aiMediaGenerationProgressNode.ts'
+import {
+    type AuthClientInstance,
+} from '@lixpi/auth-client'
+import {
+    type AssetService,
+} from '$src/services/asset-service.ts'
 import { html } from '@lixpi/ui-primitives/dom'
 
 export type ReadOnlyAiChatThreadRenderOptions = {
+    assetService: AssetService
+    auth: AuthClientInstance
     mount: HTMLElement
     content: ProseMirrorJsonNode
     threadId: string
@@ -48,6 +56,8 @@ class ReadOnlyAiChatThreadRenderer implements ReadOnlyAiChatThreadRendererInstan
         options.mount.appendChild(this.host)
 
         this.editor = new ProseMirrorEditor({
+            assetService: options.assetService,
+            auth: options.auth,
             editorMountElement: this.host,
             content: html`<div></div>` as HTMLDivElement,
             initialVal: options.content,

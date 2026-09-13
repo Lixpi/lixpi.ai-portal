@@ -5,60 +5,33 @@
 import {
     createGentelellaApplicationShell,
     type GentelellaApplicationShellInstance,
-    type GentelellaApplicationShellNavigationItem,
 } from '@lixpi/ui-kit-gentelella/components/application-shell'
 import { html } from '@lixpi/ui-primitives/dom'
+import {
+    createRouteViewOutlet,
+    type RouteViewOutletInstance,
+    type WebClientRouterService,
+} from '@lixpi/web-client-service-factory'
 
-import RouterService, {
-    MODEL_CATALOG_ROUTE_PATH,
-    MODEL_PARAMETERS_ROUTE_PATH,
-} from '$src/services/router-service.ts'
-import { routerStore } from '$src/stores/routerStore.ts'
-import {
-    catalogIcon,
-    slidersIcon,
-} from '$src/views/layouts/icons.ts'
-import {
-    createModelCatalogView,
-    type ModelCatalogViewInstance,
-} from '$src/views/modelCatalog/modelCatalogView.ts'
-import {
-    createModelParametersView,
-    type ModelParametersViewInstance,
-} from '$src/views/modelParameters/modelParametersView.ts'
+import { routes } from '$src/routes.ts'
 import '$src/views/layouts/layout.scss'
-
-const NAVIGATION_ITEMS: GentelellaApplicationShellNavigationItem[] = [
-    {
-        path: MODEL_PARAMETERS_ROUTE_PATH,
-        label: 'Model parameters',
-        iconHtml: slidersIcon,
-    },
-    {
-        path: MODEL_CATALOG_ROUTE_PATH,
-        label: 'Model catalog',
-        iconHtml: catalogIcon,
-    },
-]
 
 export type LayoutInstance = {
     el: HTMLElement
     destroy: () => void
 }
 
-type MountedView = ModelCatalogViewInstance | ModelParametersViewInstance
+export type LayoutConfig = {
+    router: WebClientRouterService
+}
 
 class Layout implements LayoutInstance {
     readonly el: HTMLElement
 
-    private readonly contentEl: HTMLDivElement
     private readonly shell: GentelellaApplicationShellInstance
-    private readonly unsubscribeRouter: () => void
+    private readonly viewOutlet: RouteViewOutletInstance
 
-    private mountedPath: string | null = null
-    private view: MountedView | null = null
-
-    constructor() {
+    constructor({ router }: LayoutConfig) {
         this.shell = createGentelellaApplicationShell({
             brand: {
                 mark: 'AI',
@@ -66,45 +39,24 @@ class Layout implements LayoutInstance {
             },
             navigationGroups: [{
                 label: 'Registry',
-                items: NAVIGATION_ITEMS,
+                items: routes,
             }],
             footerContent: html`<span className="registry-sidebar-note">Lixpi</span>`,
-            onNavigate: path => RouterService.navigateTo(path),
+            onNavigate: path => router.navigateTo(path),
         })
-        this.contentEl = this.shell.contentEl
         this.el = this.shell.el
-
-        this.unsubscribeRouter = routerStore.subscribe(({ data }) => void this.renderRoute(data.currentRoute.path))
-    }
-
-    private renderRoute(path: string): void {
-        this.shell.setActivePath(path)
-
-        if (path === this.mountedPath)
-            return
-
-        this.mountedPath = path
-        this.view?.destroy()
-        this.view = null
-
-        if (!path)
-            return
-
-        this.view = path === MODEL_CATALOG_ROUTE_PATH
-            ? createModelCatalogView()
-            : createModelParametersView()
-        this.contentEl.append(this.view.el)
-        // Only now is the view in the document, which is what a view that reads
-        // its own DOM back has been waiting for.
-        this.view.mount()
+        this.viewOutlet = createRouteViewOutlet({
+            context: { router },
+            onRouteChange: path => this.shell.setActivePath(path),
+            routes,
+            target: this.shell.contentEl,
+        })
     }
 
     destroy(): void {
-        this.unsubscribeRouter()
-        this.view?.destroy()
-        this.view = null
+        this.viewOutlet.destroy()
         this.shell.destroy()
     }
 }
 
-export const createLayout = (): LayoutInstance => new Layout()
+export const createLayout = (config: LayoutConfig): LayoutInstance => new Layout(config)

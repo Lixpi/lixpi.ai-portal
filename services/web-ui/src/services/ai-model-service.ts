@@ -3,36 +3,34 @@ import {
     LoadingStatus,
 } from '@lixpi/constants'
 import type NatsService from '@lixpi/nats-service'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 
 const { AI_MODELS_SUBJECTS } = NATS_SUBJECTS
 
-import AuthService from '$src/services/auth-service.ts'
-
-import { servicesStore } from '$src/stores/servicesStore.ts'
 import { aiModelsStore } from '$src/stores/aiModelsStore.ts'
+
+export type AiModelServiceConfig = {
+    auth: AuthTokenProvider
+    nats: NatsService
+}
 
 export default class AiModelService {
     private readonly catalogSyncSubscription: { unsubscribe(): void } | null
 
-    constructor(private readonly natsClient?: NatsService) {
-        this.catalogSyncSubscription = natsClient
-            ? natsClient.subscribe(AI_MODELS_SUBJECTS.MODELS_SYNC_COMPLETED, () => void this.getAvailableAiModels())
-            : null
+    constructor(private readonly config: AiModelServiceConfig) {
+        this.catalogSyncSubscription = config.nats.subscribe(AI_MODELS_SUBJECTS.MODELS_SYNC_COMPLETED, () => void this.getAvailableAiModels())
     }
 
     public async getAvailableAiModels(): Promise<void> {
         aiModelsStore.setMetaValues({ loadingStatus: LoadingStatus.loading })
 
         try {
-            const natsClient = this.natsClient ?? (servicesStore.getData('nats') as NatsService | undefined)
-
-            if (!natsClient)
-                throw new Error('AI model catalog requires an active NATS connection')
-
-            const availableModels: any = await natsClient.request(
+            const availableModels: any = await this.config.nats.request(
                 AI_MODELS_SUBJECTS.GET_AVAILABLE_MODELS,
                 {
-                    token: await AuthService.getTokenSilently(),
+                    token: await this.config.auth.getTokenSilently(),
                 },
             )
 

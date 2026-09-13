@@ -22,6 +22,7 @@ Lixpi runs as a small set of containerized services plus a managed datastore. Sh
 | Service | Language | Path | Role |
 |---------|----------|------|------|
 | **web-ui** | TypeScript | `services/web-ui/` | Browser SPA — canvas rendering, ProseMirror editors, AI chat UI, and client-side context extraction. Vanilla TypeScript DOM components with Nano Stores for state |
+| **web-ui-user-portal** | TypeScript | `services/web-ui-user-portal/` | User account SPA at `user-portal.<domain>` with Gentelella components backed by shared browser auth, routing, and user state |
 | **api** | Node.js / TypeScript | `services/api/` | API service — JWT auth, CRUD, DynamoDB persistence, NATS bridge, **and the in-process LangGraph LLM workflow** at `services/api/src/llm/` (pipeline events, ProseMirror transcript steps, image generation, video generation, usage tracking) |
 | **nats** | Go (3-node cluster) | `services/nats/` | Message bus — pub/sub, request/reply, organization Blob Object Store, and JetStream replay logs for pipeline/Asset-document events |
 | **localauth0** | Rust (vendored) | `services/localauth0/` | Mock Auth0 for zero-config offline development — RS256 JWT signing, JWKS, same OAuth flows as production |
@@ -43,6 +44,7 @@ Everything fans out from NATS. The browser connects to NATS over a WebSocket; th
 graph TB
     subgraph Client["Client Tier"]
         UI["Web UI<br/>TypeScript SPA · @xyflow/system · ProseMirror"]
+        Portal["User Portal<br/>TypeScript SPA · Gentelella"]
     end
 
     subgraph Broker["Message Broker"]
@@ -69,6 +71,7 @@ graph TB
 
     UI <-->|WebSocket app commands + live/replayable AI events| NATS
     UI -->|HTTPS media bytes + workspace export/import| API
+    Portal <-->|WebSocket user requests| NATS
     NATS <-->|Publish / Subscribe| API
     API --> LLM
     API --> DDB
@@ -82,6 +85,7 @@ graph TB
 | Tier | Component | Responsibility |
 |------|-----------|----------------|
 | Client | Web UI | Renders the canvas, hosts ProseMirror editors, extracts context from the node graph, and connects to NATS over WebSocket |
+| Client | User Portal | Displays account-management pages and connects to NATS over WebSocket with the same identity-provider session as the main UI |
 | Broker | NATS Cluster | Carries app commands, auth callouts, CRUD requests, AI pipeline events, replay logs, Asset-role ProseMirror steps, and rendition requests; stores immutable Blob objects in organization Object Store buckets |
 | API | api service | Validates tokens, performs CRUD against DynamoDB, hosts byte-oriented HTTP routes, and bridges browser requests to the in-process workflow |
 | API | LangGraph workflow | Resolves sealed Capabilities, streams the text model, routes image/video Tool calls, and publishes pipeline events plus ProseMirror transcript steps to NATS |

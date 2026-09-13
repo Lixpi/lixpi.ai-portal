@@ -1,120 +1,151 @@
-import NatsService from '@lixpi/nats-service'
 import { configureUiKit } from '@lixpi/ui-kit'
+import { createHelpTooltipProvider } from '@lixpi/ui-kit/components/help-tooltip'
+import { createWebClientService } from '@lixpi/web-client-service-factory'
+import NatsService from '@lixpi/nats-service'
+import {
+    createAuthClient,
+    type AuthClientInstance,
+} from '@lixpi/auth-client'
 
-import RouterService from '$src/services/router-service.ts'
-import AuthService from '$src/services/auth-service.ts'
-import UserService from '$src/services/user-service.ts'
 import SubscriptionService from '$src/services/subscription-service.ts'
 import OrganizationService from '$src/services/organization-service.ts'
 import AiModelService from '$src/services/ai-model-service.ts'
 import WorkspaceService from '$src/services/workspace-service.ts'
 import AssetService from '$src/services/asset-service.ts'
 
-import {
-    mountApp,
-    type AppInstance,
-} from '$src/app.ts'
-
 import { servicesStore } from '$src/stores/servicesStore.ts'
-import { userStore } from '$src/stores/userStore.ts'
 
 import { settings } from '$src/settings.ts'
+import '@lixpi/ui-kit/styles/bubble-menu'
+import '@lixpi/ui-kit/styles/canvas-node-footer'
+import '@lixpi/ui-kit/styles/dropdown'
+import '@lixpi/ui-kit/styles/help-tooltip'
+import '@lixpi/ui-kit/styles/info-bubble'
+import '@lixpi/ui-kit/styles/loading-placeholder'
+import '@lixpi/ui-kit/styles/media-model-badge'
+import '@lixpi/ui-kit/styles/preview'
+import '@lixpi/ui-kit/styles/progress-ripple'
+import '@lixpi/ui-kit/styles/progress-timeline'
+import '@lixpi/ui-kit/styles/side-panel'
+import '@lixpi/canvas-engine/styles/interaction'
+import '@lixpi/web-client-service-factory/styles/foundation'
+
+import { routes } from '$src/routes.ts'
+import { createLayout } from '$src/views/layouts/layout.ts'
+import '$src/sass/styles.scss'
 
 const VITE_NATS_SERVER = import.meta.env.VITE_NATS_SERVER
 
+type WebUiDependencies = {
+    auth: AuthClientInstance
+    nats: NatsService
+}
+
 configureUiKit(settings)
 
-// Init services and then start the app
-const initializeServicesSequentially = async () => {
-    try {
-        await AuthService.init()
-        const authToken = await AuthService.getTokenSilently()
-
-        if (!authToken)
-            throw new Error('No auth token')
-
-        console.log(
-            'import.meta.env.VITE_NATS_SERVER:',
-            {
-                natsServer: VITE_NATS_SERVER,
-                fullEnv: import.meta.env,
+const application = createWebClientService<WebUiDependencies>({
+    createDependencies: async () => {
+        const auth = createAuthClient({
+            auth: {
+                domain: import.meta.env.VITE_AUTH0_DOMAIN,
+                clientId: import.meta.env.VITE_AUTH0_CLIENT_ID,
+                audience: import.meta.env.VITE_AUTH0_AUDIENCE,
+                redirectUri: import.meta.env.VITE_AUTH0_REDIRECT_URI,
+                logoutReturnTo: import.meta.env.VITE_AUTH0_LOGIN_URL,
+                mock: {
+                    domain: import.meta.env.VITE_MOCK_AUTH0_DOMAIN,
+                    enabled: import.meta.env.VITE_MOCK_AUTH === 'true',
+                },
             },
-        )
+        })
+        const session = await auth.initializeSession()
 
-        const natsInstance = await NatsService.init({
+        if (
+            auth.features.currentUser
+            && !session
+        )
+            throw new Error('Current-user loading requires authentication')
+
+        const nats = await NatsService.init({
             servers: [VITE_NATS_SERVER],
             webSocket: true,
             name: 'web-client',
-            token: authToken,
-            // Re-fetch a valid token before every (re)connect so the client recovers
-            // from token expiry or a signing-key rotation (e.g. after the auth/API
-            // service restarts) without needing the user to clear cookies/localStorage.
-            getToken: () => AuthService.getTokenSilently(),
-            // When the server rejects our credentials, force a fresh token so the
-            // subsequent getToken() no longer returns the stale, cached one.
-            onAuthError: () => AuthService.getTokenSilently(true),
+            token: session?.accessToken,
+            getToken: session?.getToken,
+            onAuthError: session
+                ? async () => void (await session.refreshToken())
+                : undefined,
         })
-        const aiModelService = new AiModelService(natsInstance)
 
+        return {
+            auth,
+            nats,
+        }
+    },
+    routing: { routes },
+    createResources: [() => createHelpTooltipProvider({
+        showDelayMs: settings.helpTooltip.providerShowDelayMs,
+        root: document,
+        shouldShow: trigger => trigger.getAttribute('aria-expanded') !== 'true',
+    })],
+    createView: ({
+        dependencies: { auth },
+        router,
+    }) => createLayout({
+        assetService: servicesStore.getData('assetService'),
+        auth,
+        router,
+        workspaceService: servicesStore.getData('workspaceService'),
+    }),
+    destroyDependencies: async ({ nats }) => await nats.disconnect(),
+    initializeServices: ({
+        dependencies: {
+            auth,
+            nats,
+        },
+        router,
+    }) => {
+        const assetService = new AssetService({
+            auth,
+            userStore: auth.userStore,
+        })
+        const aiModelService = new AiModelService({
+            auth,
+            nats,
+        })
         servicesStore.setDataValues({
-            nats: natsInstance,
-            userService: new UserService(),
+            nats,
             subscriptionService: new SubscriptionService(),
             aiModelService,
-            assetService: new AssetService(),
-            workspaceService: new WorkspaceService(),
+            assetService,
+            workspaceService: new WorkspaceService({
+                auth,
+                router,
+            }),
             organizationService: new OrganizationService(),
         })
+    },
+    startServices: async ({ dependencies: {
+        auth,
+        nats,
+    } }) => {
+        if (auth.features.currentUser)
+            await auth.loadCurrentUser({
+                requestClient: {
+                    request: (subject, payload) => nats.request(subject, payload),
+                },
+            })
 
-        // Fetch registered user
-        servicesStore.getData('userService')!.getUser()
-
-        // Fetch organization details
         servicesStore.getData('organizationService')!.getOrganization({
-            organizationId: userStore.getData('organizations')[0],
+            organizationId: auth.userStore.getData('organizations')[0],
         })
-
-        // Fetch available AI models
-        aiModelService.getAvailableAiModels()
-
-        // Fetch user workspaces
+        servicesStore.getData('aiModelService')!.getAvailableAiModels()
         servicesStore.getData('workspaceService')!.getUserWorkspaces()
+    },
+    shutdownServices: async () => await servicesStore.getData('workspaceService')?.canvasSessions.close(),
+    onError: error => console.error('Application failed to start', error),
+})
 
-        await RouterService.init()
-    } catch (error) {
-        console.error('Error during service initialization', error)
+void application.start()
 
-        throw error // Re-throw to handle it in the caller
-    }
-}
-
-export const shutdownApplication = async (): Promise<void> => {
-    const mounted = await application
-    await mounted?.destroy()
-}
-
-const initializeApplication = async (): Promise<AppInstance | null> => {
-    try {
-        await initializeServicesSequentially()
-        const target = document.getElementById('app')
-
-        if (!target)
-            throw new Error('Application mount target #app not found')
-
-        const workspaceService = servicesStore.getData('workspaceService')!
-
-        return mountApp(target, async () => await workspaceService.canvasSessions.close())
-    } catch (error) {
-        console.error('Application failed to start', error)
-
-        try {
-            await servicesStore.getData('workspaceService')?.canvasSessions.close()
-        } catch (closeError) {
-            console.error('Canvas session shutdown after startup failure failed', closeError)
-        }
-
-        return null
-    }
-}
-
-const application = initializeApplication()
+export const shutdownApplication = (): Promise<void> => application.destroy()

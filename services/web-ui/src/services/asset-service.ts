@@ -19,8 +19,11 @@ import {
     type AssetDocSnapshot,
     type AssetDocSnapshotReference,
 } from '@lixpi/prosemirror'
+import {
+    type AuthTokenProvider,
+    type UserStateStore,
+} from '@lixpi/auth-client'
 
-import AuthService from '$src/services/auth-service.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
 import { assetsStore } from '$src/stores/assetsStore.ts'
 import {
@@ -28,31 +31,15 @@ import {
     type AssetDocumentSnapshot,
 } from '$src/stores/assetDocumentsStore.ts'
 import { workspaceStore } from '$src/stores/workspaceStore.ts'
-import { userStore } from '$src/stores/userStore.ts'
 
 const { ASSET_SUBJECTS } = NATS_SUBJECTS
 const ASSET_LOAD_CONCURRENCY = 8
 const ASSET_DOCUMENT_RESUME_TIMEOUT_MS = 15000
 const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 
-const request = async <T>(
-    subject: string,
-    payload: Record<string, unknown>,
-    timeout?: number,
-): Promise<T> => {
-    const nats = servicesStore.getData('nats')
-
-    if (!nats)
-        throw new Error('NATS service unavailable')
-
-    return (await nats.request(
-        subject,
-        {
-            token: await AuthService.getTokenSilently(),
-            ...payload,
-        },
-        timeout,
-    )) as T
+export type AssetServiceConfig = {
+    auth: AuthTokenProvider
+    userStore: UserStateStore
 }
 
 const mapWithConcurrency = async <T, R>(
@@ -83,22 +70,46 @@ const mapWithConcurrency = async <T, R>(
 }
 
 export class AssetService {
-    private readonly workspaceAssets = new WorkspaceAssetProjection({
-        get: (assetId, workspaceId) => this.get(assetId, workspaceId),
-        hasDocument: (assetId, role) => Boolean(
-            assetDocumentsStore.get(assetId, role),
-        ),
-        resumeDocument: coordinate => this.resumeDocumentSnapshot(coordinate),
-        publishAssets: (workspaceId, assets) => assetsStore.setAssets(workspaceId, assets),
-        publishDocuments: snapshots => assetDocumentsStore.setMany(snapshots),
-        setLoading: workspaceId => assetsStore.setLoading(workspaceId),
-        setError: error => assetsStore.setError(error),
-        reportError: (message, error) => console.warn(
-            '[AssetService]',
-            message,
-            error,
-        ),
-    })
+    private readonly workspaceAssets: WorkspaceAssetProjection
+
+    constructor(private readonly config: AssetServiceConfig) {
+        this.workspaceAssets = new WorkspaceAssetProjection({
+            get: (assetId, workspaceId) => this.get(assetId, workspaceId),
+            hasDocument: (assetId, role) => Boolean(
+                assetDocumentsStore.get(assetId, role),
+            ),
+            resumeDocument: coordinate => this.resumeDocumentSnapshot(coordinate),
+            publishAssets: (workspaceId, assets) => assetsStore.setAssets(workspaceId, assets),
+            publishDocuments: snapshots => assetDocumentsStore.setMany(snapshots),
+            setLoading: workspaceId => assetsStore.setLoading(workspaceId),
+            setError: error => assetsStore.setError(error),
+            reportError: (message, error) => console.warn(
+                '[AssetService]',
+                message,
+                error,
+            ),
+        })
+    }
+
+    private async request<T>(
+        subject: string,
+        payload: Record<string, unknown>,
+        timeout?: number,
+    ): Promise<T> {
+        const nats = servicesStore.getData('nats')
+
+        if (!nats)
+            throw new Error('NATS service unavailable')
+
+        return (await nats.request(
+            subject,
+            {
+                token: await this.config.auth.getTokenSilently(),
+                ...payload,
+            },
+            timeout,
+        )) as T
+    }
 
     private async loadAssetsById(
         assetIds: readonly string[],
@@ -131,7 +142,7 @@ export class AssetService {
         const response = await fetch(
             `${API_BASE_URL}${reference.url}`,
             {
-                headers: { Authorization: `Bearer ${await AuthService.getTokenSilently()}` },
+                headers: { Authorization: `Bearer ${await this.config.auth.getTokenSilently()}` },
             },
         )
 
@@ -154,7 +165,7 @@ export class AssetService {
         assetId: string,
         workspaceId?: string,
     ): Promise<Asset | { error: string }> {
-        return await request(
+        return await this.request(
             ASSET_SUBJECTS.GET,
             {
                 assetId,
@@ -204,7 +215,7 @@ export class AssetService {
             {
                 subscribe: listener => {
                     const nats = servicesStore.getData('nats')
-                    const userId = userStore.getData('userId') as string
+                    const userId = this.config.userStore.getData('userId') as string
                     const subscriptions: { unsubscribe: () => void }[] = []
                     const release = (): void => {
                         const errors: unknown[] = []
@@ -290,7 +301,7 @@ export class AssetService {
         items: AssetMeta[]
         cursor?: string
     }> {
-        const result = await request<{
+        const result = await this.request<{
             items: AssetMeta[]
             cursor?: string
         } | { error: string }>(
@@ -398,7 +409,7 @@ export class AssetService {
         result: AssetDocResumeResult
         snapshot: AssetDocumentSnapshot | null
     }> {
-        const result = await request<AssetDocResumeResult>(
+        const result = await this.request<AssetDocResumeResult>(
             ASSET_SUBJECTS.DOCUMENT_RESUME,
             {
                 organizationId,
@@ -445,7 +456,7 @@ export class AssetService {
         initialDoc?: object
         assetId?: string
     }): Promise<Asset> {
-        const result = await request<Asset | { error: string }>(
+        const result = await this.request<Asset | { error: string }>(
             ASSET_SUBJECTS.CREATE,
             {
                 organizationId,
@@ -475,7 +486,7 @@ export class AssetService {
             descriptor?: Asset['descriptor']
         },
     ): Promise<Asset | { error: string }> {
-        const result = await request<Asset | { error: string }>(
+        const result = await this.request<Asset | { error: string }>(
             ASSET_SUBJECTS.UPDATE_METADATA,
             {
                 assetId,
@@ -495,7 +506,7 @@ export class AssetService {
         assetRevision: number,
         classification: SubjectIdentityClassification,
     ): Promise<Asset | { error: string }> {
-        const result = await request<Asset | { error: string }>(
+        const result = await this.request<Asset | { error: string }>(
             ASSET_SUBJECTS.SUBJECT_IDENTITY_ATTEST,
             {
                 assetId,
@@ -516,7 +527,7 @@ export class AssetService {
         scope: AssetScope,
         scopeOwnerId: string,
     ): Promise<Asset | { error: string }> {
-        const result = await request<Asset | { error: string }>(
+        const result = await this.request<Asset | { error: string }>(
             ASSET_SUBJECTS.CHANGE_SCOPE,
             {
                 assetId,
@@ -533,7 +544,7 @@ export class AssetService {
     }
 
     async reviewGeneratedOutput(payload: GeneratedOutputReviewRequest): Promise<GeneratedOutputReviewResponse | { error: string }> {
-        const result = await request<GeneratedOutputReviewResponse | { error: string }>(ASSET_SUBJECTS.REVIEW_GENERATED_OUTPUT, payload)
+        const result = await this.request<GeneratedOutputReviewResponse | { error: string }>(ASSET_SUBJECTS.REVIEW_GENERATED_OUTPUT, payload)
 
         if (!('error' in result))
             await Promise.all(
@@ -550,7 +561,7 @@ export class AssetService {
         surfaceId?: string
         workspaceMutation?: Record<string, unknown>
     }): Promise<unknown> {
-        return await request(ASSET_SUBJECTS.ATTACH, payload)
+        return await this.request(ASSET_SUBJECTS.ATTACH, payload)
     }
 
     async detach(payload: {
@@ -561,7 +572,7 @@ export class AssetService {
         referenceType?: 'workspace' | 'catalog'
         workspaceMutation?: Record<string, unknown>
     }): Promise<unknown> {
-        return await request(ASSET_SUBJECTS.DETACH, payload)
+        return await this.request(ASSET_SUBJECTS.DETACH, payload)
     }
 
     async acquireLease(
@@ -569,7 +580,7 @@ export class AssetService {
         workspaceId: string,
         holderId: string,
     ): Promise<Asset['editLease'] | { error: string }> {
-        return await request(
+        return await this.request(
             ASSET_SUBJECTS.ACQUIRE_LEASE,
             {
                 assetId,
@@ -585,7 +596,7 @@ export class AssetService {
         leaseId: string,
         holderId: string,
     ): Promise<Asset['editLease'] | { error: string }> {
-        return await request(
+        return await this.request(
             ASSET_SUBJECTS.RENEW_LEASE,
             {
                 assetId,
@@ -602,7 +613,7 @@ export class AssetService {
         leaseId: string,
         holderId: string,
     ): Promise<void> {
-        await request(
+        await this.request(
             ASSET_SUBJECTS.RELEASE_LEASE,
             {
                 assetId,

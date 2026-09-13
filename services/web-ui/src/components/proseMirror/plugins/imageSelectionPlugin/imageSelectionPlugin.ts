@@ -2,12 +2,15 @@ import {
     Plugin,
     PluginKey,
 } from 'prosemirror-state'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 
 import { ImageNodeView } from '$src/components/proseMirror/plugins/imageSelectionPlugin/imageNodeView.ts'
 
 export const imageSelectionPluginKey = new PluginKey('imageSelection')
 
-export const imageSelectionPlugin = (): Plugin => {
+export const imageSelectionPlugin = (auth?: AuthTokenProvider): Plugin => {
     return new Plugin({
         key: imageSelectionPluginKey,
         props: {
@@ -18,6 +21,7 @@ export const imageSelectionPlugin = (): Plugin => {
                     getPos,
                 ) {
                     return new ImageNodeView({
+                        auth,
                         node,
                         view,
                         getPos: getPos as () => number | undefined,
@@ -29,6 +33,7 @@ export const imageSelectionPlugin = (): Plugin => {
                     getPos,
                 ) {
                     return new ImageNodeView({
+                        auth,
                         node,
                         view,
                         getPos: getPos as () => number | undefined,

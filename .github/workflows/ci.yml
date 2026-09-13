@@ -29,6 +29,8 @@ jobs:
                       command: self-test
                     - name: web-ui
                       command: web-ui validate
+                    - name: web-ui-user-portal
+                      command: web-ui-user-portal validate
                     - name: api
                       command: api validate
                     - name: nex
@@ -64,6 +66,8 @@ jobs:
                 domain:
                     - api
                     - web-ui
+                    - web-ui-user-portal
+                    - ai-model-registry
                     - nex
                     - shared
                     - docs-site

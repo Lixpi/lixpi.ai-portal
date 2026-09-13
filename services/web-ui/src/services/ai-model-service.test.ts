@@ -14,26 +14,14 @@ import AiModelService from '$src/services/ai-model-service.ts'
 
 const { AI_MODELS_SUBJECTS } = NATS_SUBJECTS
 
-const getDataMock = vi.hoisted(() => vi.fn())
 const requestMock = vi.hoisted(() => vi.fn())
+const subscribeMock = vi.hoisted(() => vi.fn(() => ({ unsubscribe: vi.fn() })))
 const getTokenSilentlyMock = vi.hoisted(() => vi.fn())
 const setAiModelsMock = vi.hoisted(() => vi.fn())
 const setAiModelsCatalogMock = vi.hoisted(() => vi.fn())
 const setMetaValuesMock = vi.hoisted(() => vi.fn())
 let consoleErrorSpy: { mockRestore: () => void } | null = null
 let consoleWarnSpy: { mockRestore: () => void } | null = null
-
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: getTokenSilentlyMock,
-    },
-}))
-
-vi.mock('$src/stores/servicesStore.ts', () => ({
-    servicesStore: {
-        getData: getDataMock,
-    },
-}))
 
 vi.mock('$src/stores/aiModelsStore.ts', () => ({
     aiModelsStore: {
@@ -50,12 +38,15 @@ describe('AiModelService', () => {
         consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
         consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
         vi.clearAllMocks()
-        getDataMock.mockReturnValue({
-            request: requestMock,
-        })
         getTokenSilentlyMock.mockResolvedValue('auth-token')
 
-        service = new AiModelService()
+        service = new AiModelService({
+            auth: { getTokenSilently: getTokenSilentlyMock },
+            nats: {
+                request: requestMock,
+                subscribe: subscribeMock,
+            } as never,
+        })
     })
 
     afterEach(() => {
@@ -83,7 +74,6 @@ describe('AiModelService', () => {
 
         await service.getAvailableAiModels()
 
-        expect(getDataMock).toHaveBeenCalledWith('nats')
         expect(requestMock).toHaveBeenCalledWith(AI_MODELS_SUBJECTS.GET_AVAILABLE_MODELS, {
             token: 'auth-token',
         })

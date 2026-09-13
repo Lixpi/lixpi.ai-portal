@@ -1,6 +1,9 @@
 import {
     type WorkspaceCanvasHost,
 } from '@lixpi/canvas-components-lixpi-specific/frontend/workspace'
+import {
+    type AuthClientInstance,
+} from '@lixpi/auth-client'
 import { WorkspaceMediaAdapter } from './workspace-media.ts'
 import { createMediaModelBadge } from '@lixpi/ui-kit/components/media-model-badge'
 import { createWorkspaceCanvasEditors } from './workspace-editors.ts'
@@ -23,9 +26,10 @@ import {
     ensureCapabilityStyles,
 } from '$src/installed-capabilities.ts'
 import { settings } from '$src/settings.ts'
-import AssetService from '$src/services/asset-service.ts'
-import AuthService from '$src/services/auth-service.ts'
-import { loadWorkspaceRouteData } from '$src/services/router-service.ts'
+import {
+    type AssetService,
+} from '$src/services/asset-service.ts'
+import { loadWorkspaceRouteData } from '$src/routes.ts'
 import { createDefaultCapabilityCatalogClient } from '$src/services/capability-catalog-client.ts'
 import { createPromptReferenceCatalogClient } from '$src/services/prompt-reference-catalog-client.ts'
 import { describeMedia } from '$src/services/media-descriptor-service.ts'
@@ -39,13 +43,19 @@ import {
 } from '$src/services/ai-interaction-service.ts'
 import { aiModelsStore } from '$src/stores/aiModelsStore.ts'
 import { workspaceStore } from '$src/stores/workspaceStore.ts'
-import { userStore } from '$src/stores/userStore.ts'
 import { assetsStore } from '$src/stores/assetsStore.ts'
 import { assetDocumentsStore } from '$src/stores/assetDocumentsStore.ts'
 import { extractContentFromProseMirror } from '$src/utils/prosemirrorText.ts'
 
-export const createWorkspaceCanvasHost = (): WorkspaceCanvasHost => {
-    const assets = new AssetService()
+export type WorkspaceCanvasHostConfig = {
+    assetService: AssetService
+    auth: AuthClientInstance
+}
+
+export const createWorkspaceCanvasHost = ({
+    assetService,
+    auth,
+}: WorkspaceCanvasHostConfig): WorkspaceCanvasHost => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || ''
 
     return {
@@ -62,22 +72,25 @@ export const createWorkspaceCanvasHost = (): WorkspaceCanvasHost => {
             return () => window.removeEventListener('lixpi:open-capability-library', listener)
         },
         settings,
-        editors: createWorkspaceCanvasEditors(),
+        editors: createWorkspaceCanvasEditors({
+            assetService,
+            auth,
+        }),
         assets: {
             read: assetId => assetsStore.get(assetId),
             upsert: asset => assetsStore.upsert(asset),
             subscribe: changed => assetsStore.subscribe(changed),
             readDocument: (assetId, role) => assetDocumentsStore.get(assetId, role),
-            create: request => assets.create(request),
-            get: (assetId, workspaceId) => assets.get(assetId, workspaceId),
-            refresh: (assetId, workspaceId) => assets.refresh(assetId, workspaceId),
-            loadWorkspaceAssets: workspaceId => assets.loadWorkspaceAssets(workspaceId),
-            ensureAssetsLoaded: assetIds => assets.ensureAssetsLoaded(assetIds),
+            create: request => assetService.create(request),
+            get: (assetId, workspaceId) => assetService.get(assetId, workspaceId),
+            refresh: (assetId, workspaceId) => assetService.refresh(assetId, workspaceId),
+            loadWorkspaceAssets: workspaceId => assetService.loadWorkspaceAssets(workspaceId),
+            ensureAssetsLoaded: assetIds => assetService.ensureAssetsLoaded(assetIds),
             updateMetadata: (
                 assetId,
                 revision,
                 patch,
-            ) => assets.updateMetadata(
+            ) => assetService.updateMetadata(
                 assetId,
                 revision,
                 patch,
@@ -87,7 +100,7 @@ export const createWorkspaceCanvasHost = (): WorkspaceCanvasHost => {
                 revision,
                 scope,
                 ownerId,
-            ) => assets.changeScope(
+            ) => assetService.changeScope(
                 assetId,
                 revision,
                 scope,
@@ -97,31 +110,31 @@ export const createWorkspaceCanvasHost = (): WorkspaceCanvasHost => {
                 assetId,
                 revision,
                 classification,
-            ) => assets.attestSubjectIdentity(
+            ) => assetService.attestSubjectIdentity(
                 assetId,
                 revision,
                 classification,
             ),
-            reviewGeneratedOutput: request => assets.reviewGeneratedOutput(request),
-            list: query => assets.list(query),
-            resumeDocument: request => assets.resumeDocument(request),
-            detach: request => assets.detach(request),
+            reviewGeneratedOutput: request => assetService.reviewGeneratedOutput(request),
+            list: query => assetService.list(query),
+            resumeDocument: request => assetService.resumeDocument(request),
+            detach: request => assetService.detach(request),
         },
         generation: {
-            connect: createCanvasConversationTransport,
-            fetchConversation: createConversationProjectionFetch(assets),
+            connect: options => createCanvasConversationTransport(auth, options),
+            fetchConversation: createConversationProjectionFetch(assetService),
             subscribe: subscribeCanvasMediaOperation,
-            get: getMediaGenerationRequest,
-            replay: replayMediaGenerationRequest,
-            cancel: cancelMediaGenerationRequest,
-            resolveReference: resolveMediaGenerationReference,
-            startVerification: startMediaGenerationVerification,
-            stopConversation: stopAiChatMessageForThread,
-            describeMedia,
+            get: request => getMediaGenerationRequest(auth, request),
+            replay: request => replayMediaGenerationRequest(auth, request),
+            cancel: request => cancelMediaGenerationRequest(auth, request),
+            resolveReference: request => resolveMediaGenerationReference(auth, request),
+            startVerification: request => startMediaGenerationVerification(auth, request),
+            stopConversation: request => stopAiChatMessageForThread(auth, request),
+            describeMedia: request => describeMedia(auth, request),
         },
         workspace: {
             organizationId: () => workspaceStore.getData('organizationId'),
-            userId: () => userStore.getData('userId'),
+            userId: () => auth.userStore.getData('userId'),
             loadingStatus: () => workspaceStore.getMeta('loadingStatus'),
             subscribe: changed => workspaceStore.subscribe(
                 ({
@@ -148,16 +161,25 @@ export const createWorkspaceCanvasHost = (): WorkspaceCanvasHost => {
             frontend: capabilityArtifactFrontendRegistry,
             shared: capabilityArtifactSharedRegistry,
             ensureStyles: ensureCapabilityStyles,
-            catalog: createDefaultCapabilityCatalogClient,
-            promptCatalog: createPromptReferenceCatalogClient,
+            catalog: (workspaceId, organizationId) => createDefaultCapabilityCatalogClient(
+                auth,
+                auth.userStore,
+                workspaceId,
+                organizationId,
+            ),
+            promptCatalog: (workspaceId, organizationId) => createPromptReferenceCatalogClient(
+                auth,
+                workspaceId,
+                organizationId,
+            ),
         },
         media: new WorkspaceMediaAdapter({
             apiBaseUrl,
-            getToken: () => AuthService.getTokenSilently(),
+            getToken: () => auth.getTokenSilently(),
             getAsset: assetId => assetsStore.get(assetId),
             fetch,
         }),
-        contextEnvironment: createContextPreviewEnvironment,
+        contextEnvironment: sources => createContextPreviewEnvironment(auth, sources),
         extractText: content => extractContentFromProseMirror(typeof content === 'string'
             || content && typeof content === 'object'
             ? content

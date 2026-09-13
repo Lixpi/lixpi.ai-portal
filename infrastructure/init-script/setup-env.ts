@@ -1033,6 +1033,9 @@ const generateEnvFileContent = (config: EnvConfig): string => {
         '{{NATS_NEX_NODE_NKEY_SEED}}': config.natsNexNodeNkeySeed,
         '{{NATS_NEX_NODE_NKEY_PUBLIC}}': config.natsNexNodeNkeyPublic,
         '{{NATS_CORS_COMMENT}}': isLocal ? ' (local development - allow all origins)' : '',
+        '{{NATS_ALLOWED_ORIGINS}}': isLocal
+            ? '[]'
+            : `["https://${config.domainName}","https://user-portal.${config.domainName}"]`,
         '{{ORIGIN_HOST_URL}}': isLocal ? 'http://localhost:3001' : `https://${config.domainName}`,
         '{{API_HOST_URL}}': isLocal ? 'http://localhost:3005' : `https://api.${config.domainName}`,
         '{{AUTH0_DOMAIN}}': config.auth0Domain,
@@ -1058,6 +1061,7 @@ const generateEnvFileContent = (config: EnvConfig): string => {
         '{{VITE_AUTH0_CLIENT_ID}}': config.auth0ClientId,
         '{{VITE_AUTH0_AUDIENCE}}': config.auth0Audience,
         '{{VITE_AUTH0_REDIRECT_URI}}': isLocal ? 'http://localhost:3001' : `https://${config.domainName}`,
+        '{{VITE_USER_PORTAL_URL}}': isLocal ? 'http://localhost:3002' : `https://user-portal.${config.domainName}`,
         '{{VITE_STRIPE_PUBLIC_KEY}}': config.stripePublicKey,
         '{{VITE_NATS_SERVER}}': isLocal ? 'wss://localhost:9222' : `wss://nats.${config.domainName}`,
         '{{CLOUDWATCH_LOG_RETENTION_DAYS}}': String(config.cloudwatchLogRetentionDays),

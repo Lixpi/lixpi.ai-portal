@@ -368,7 +368,7 @@ If a D3 component uses only `.on(...)` listeners on SVG elements that are remove
 
 ## Tests
 
-Follow the [`TypeScript Testing Guide`](../testing/TypeScript/TESTING-GUIDE.md) for shared conventions and the [`Web-UI Testing Guide`](../testing/TypeScript/web-ui/TESTING-GUIDE.md) for `services/web-ui` specifics.
+Follow the [`TypeScript Testing Guide`](../testing/TypeScript/TESTING-GUIDE.md) for test commands and conventions.
 
 For D3 SVG UI:
 

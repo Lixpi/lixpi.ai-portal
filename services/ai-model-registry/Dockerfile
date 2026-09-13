@@ -21,6 +21,7 @@ COPY ./packages/lixpi/nats-service ./packages/lixpi/nats-service
 COPY ./packages/lixpi/ui-kit-gentelella ./packages/lixpi/ui-kit-gentelella
 COPY ./packages/lixpi/ui-primitives ./packages/lixpi/ui-primitives
 COPY ./packages/lixpi/usage-reporter ./packages/lixpi/usage-reporter
+COPY ./packages/lixpi/web-client-service-factory ./packages/lixpi/web-client-service-factory
 COPY ./services/ai-model-registry/pnpm-workspace.yaml ./pnpm-workspace.yaml
 
 # Install dependencies, redundant when running locally because starting service each time will install deps, but needed for deployment

@@ -5,8 +5,10 @@ import {
     type ImageGenerationTraceReference,
     type VideoGenerationTrace,
 } from '@lixpi/constants'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 
-import AuthService from '$src/services/auth-service.ts'
 import { html } from '@lixpi/ui-primitives/dom'
 import { resolveAuthenticatedMediaUrl } from '$src/utils/mediaUrls.ts'
 
@@ -35,6 +37,7 @@ type RenderImageGenerationTraceDetailsParams = {
 }
 
 export type ImageGenerationTraceDetailsOptions = {
+    auth?: AuthTokenProvider
     className?: string
     hideToolPrompt?: boolean
     getAdditionalReferenceImageSources?: (reference: ImageGenerationTraceReference) => string[]
@@ -180,14 +183,17 @@ const getReferenceImageSources = (
     ])
 }
 
-const resolveReferenceImageSrc = async (imageUrl: string): Promise<string> => {
+const resolveReferenceImageSrc = async (
+    imageUrl: string,
+    options: ImageGenerationTraceDetailsOptions,
+): Promise<string> => {
     const source = imageUrl.startsWith('nats-obj://') ? '' : imageUrl
 
     return resolveAuthenticatedMediaUrl(
         source,
         {
             apiBaseUrl: import.meta.env.VITE_API_URL || '',
-            getAuthToken: () => AuthService.getTokenSilently(),
+            getAuthToken: () => options.auth?.getTokenSilently() ?? Promise.resolve(false),
         },
     )
 }
@@ -199,7 +205,7 @@ const resolveReferenceImageSources = async (
     const resolvedSources: string[] = []
 
     for (const source of getReferenceImageSources(reference, options)) {
-        const resolvedSource = await resolveReferenceImageSrc(source)
+        const resolvedSource = await resolveReferenceImageSrc(source, options)
 
         if (resolvedSource)
             resolvedSources.push(resolvedSource)

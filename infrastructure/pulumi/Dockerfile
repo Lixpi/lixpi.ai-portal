@@ -30,6 +30,7 @@ RUN eval "$(fnm env)" && \
 
 # Activate the repository's pnpm version in the Node installation managed by fnm.
 RUN eval "$(fnm env)" && \
+    corepack enable && \
     corepack prepare pnpm@12.3.4 --activate
 
 # Add fnm initialization to .bashrc to ensure it's available in all bash sessions

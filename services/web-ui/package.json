@@ -35,6 +35,7 @@
         "@lixpi/markdown-stream-parser": "latest"
     },
     "dependencies": {
+        "@lixpi/auth-client": "workspace:*",
         "@lixpi/capability-system": "workspace:*",
         "@lixpi/constants": "workspace:*",
         "@lixpi/canvas-engine": "workspace:*",
@@ -43,8 +44,8 @@
         "@lixpi/nats-service": "workspace:*",
         "@lixpi/prosemirror": "workspace:*",
         "@lixpi/ui-kit": "workspace:*",
+        "@lixpi/web-client-service-factory": "workspace:*",
         "elkjs": "*",
-        "@auth0/auth0-spa-js": "*",
         "@codemirror/autocomplete": "*",
         "@codemirror/commands": "*",
         "@codemirror/lang-css": "*",
@@ -58,10 +59,8 @@
         "@codemirror/state": "*",
         "@codemirror/view": "*",
         "@lezer/highlight": "*",
-        "@nanostores/persistent": "*",
         "codemirror": "*",
         "crelt": "*",
-        "nanostores": "*",
         "prosemirror-commands": "*",
         "prosemirror-dropcursor": "*",
         "prosemirror-example-setup": "*",

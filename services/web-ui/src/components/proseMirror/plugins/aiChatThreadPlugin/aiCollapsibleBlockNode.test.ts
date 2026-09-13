@@ -15,11 +15,7 @@ import {
     type VideoGenerationTrace,
 } from '@lixpi/constants'
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: vi.fn(async () => 'token-1'),
-    },
-}))
+const auth = { getTokenSilently: vi.fn(async () => 'token-1') }
 
 const createTrace = (overrides: Partial<ImageGenerationTrace> = {}): ImageGenerationTrace => {
     return {
@@ -114,7 +110,18 @@ const createCollapsibleNodeView = (
     }
 
     const getPos = vi.fn(() => 3)
-    const nodeView = aiCollapsibleBlockNodeView(node, mockView, getPos, options)
+    const nodeView = aiCollapsibleBlockNodeView(
+        node,
+        mockView,
+        getPos,
+        {
+            ...options,
+            traceDetailsOptions: {
+                auth,
+                ...options.traceDetailsOptions,
+            },
+        },
+    )
 
     return {
         nodeView,

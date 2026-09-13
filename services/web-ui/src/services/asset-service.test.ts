@@ -27,12 +27,6 @@ const mocks = vi.hoisted(() => ({
     unsubscribe: vi.fn(),
 }))
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: {
-        getTokenSilently: mocks.getTokenSilently,
-    },
-}))
-
 vi.mock('$src/stores/servicesStore.ts', () => ({
     servicesStore: {
         getData: vi.fn(() => ({
@@ -67,11 +61,10 @@ vi.mock('$src/stores/workspaceStore.ts', () => ({
     },
 }))
 
-vi.mock('$src/stores/userStore.ts', () => ({
-    userStore: {
-        getData: vi.fn(() => 'user-1'),
-    },
-}))
+const createAssetService = (): AssetService => new AssetService({
+    auth: { getTokenSilently: mocks.getTokenSilently },
+    userStore: { getData: () => 'user-1' } as never,
+})
 
 const makeAsset = (overrides: Partial<Asset> & Pick<Asset, 'assetId' | 'title'>): Asset => {
     return {
@@ -104,7 +97,7 @@ describe('AssetService.startWorkspaceSynchronization', () => {
 
     it('does not reload the workspace catalog for events about unloaded Assets', () => {
         vi.useFakeTimers()
-        const service = new AssetService()
+        const service = createAssetService()
         const loadWorkspaceAssets = vi.spyOn(service, 'loadWorkspaceAssets').mockResolvedValue([])
         const stop = service.startWorkspaceSynchronization('workspace-1')
         const updatedSubject = getAssetEventSubject(
@@ -133,7 +126,7 @@ describe('AssetService.create', () => {
 
     it('rejects API errors without inserting the error reply into the Asset store', async () => {
         mocks.request.mockResolvedValue({ error: 'INITIAL_EMBEDDED_ASSETS_REQUIRE_ATTACH' })
-        const service = new AssetService()
+        const service = createAssetService()
 
         await expect(service.create({
             organizationId: 'organization-1',
@@ -239,7 +232,7 @@ describe('AssetService.loadWorkspaceAssets', () => {
             return { error: 'NOT_FOUND' }
         })
 
-        const service = new AssetService()
+        const service = createAssetService()
         const assets = await service.loadWorkspaceAssets('workspace-1')
 
         expect(assets.map(asset => [asset.assetId, asset.title])).toEqual([
@@ -277,7 +270,7 @@ describe('AssetService.ensureAssetsLoaded', () => {
         ))
         mocks.request.mockResolvedValue(missingAsset)
 
-        const service = new AssetService()
+        const service = createAssetService()
         const loaded = await service.ensureAssetsLoaded([
             cachedAsset.assetId,
             missingAsset.assetId,

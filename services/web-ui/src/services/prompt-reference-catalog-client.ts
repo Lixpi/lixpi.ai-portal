@@ -5,8 +5,10 @@ import {
     type PromptReferenceCatalogPage,
     type PromptReferenceCategory,
 } from '@lixpi/constants'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 
-import AuthService from '$src/services/auth-service.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
 
 export type PromptReferenceCatalogQuery = {
@@ -26,6 +28,7 @@ export type PromptReferenceCatalogClient = {
 }
 
 export const createPromptReferenceCatalogClient = (
+    auth: AuthTokenProvider,
     workspaceId: string,
     organizationId: string,
 ): PromptReferenceCatalogClient => {
@@ -41,7 +44,7 @@ export const createPromptReferenceCatalogClient = (
         const response = (await nats.request(
             subject,
             {
-                token: await AuthService.getTokenSilently(),
+                token: await auth.getTokenSilently(),
                 workspaceId,
                 organizationId,
                 ...payload,

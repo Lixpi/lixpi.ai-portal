@@ -12,7 +12,7 @@ import {
 } from './asset-ingest.ts'
 
 const token = vi.hoisted(() => vi.fn())
-vi.mock('$src/services/auth-service.ts', () => ({ default: { getTokenSilently: token } }))
+const auth = { getTokenSilently: token }
 const request = vi.fn()
 
 beforeEach(() => {
@@ -37,7 +37,7 @@ describe('canvas Asset ingest transport', () => {
     it('uploads file bytes after authorization and admission without exposing the token to the package', async () => {
         const file = new File(['pixels'], 'image.png', { type: 'image/png' })
         const onStart = vi.fn(() => true)
-        expect(await uploadCanvasAsset({
+        expect(await uploadCanvasAsset(auth, {
             workspaceId: 'workspace',
             file,
             onStart,
@@ -53,7 +53,7 @@ describe('canvas Asset ingest transport', () => {
     })
 
     it('sends URL import requests through the existing endpoint', async () => {
-        await importCanvasAssetUrl({
+        await importCanvasAssetUrl(auth, {
             workspaceId: 'workspace',
             url: 'https://source.test/image',
             onStart: () => true,
@@ -70,14 +70,14 @@ describe('canvas Asset ingest transport', () => {
 
     it('does not send after authorization fails or the canvas declines admission', async () => {
         const onStart = vi.fn(() => false)
-        expect(await importCanvasAssetUrl({
+        expect(await importCanvasAssetUrl(auth, {
             workspaceId: 'workspace',
             url: 'url',
             onStart,
         })).toBeNull()
         token.mockResolvedValue(false)
         onStart.mockClear()
-        expect(await importCanvasAssetUrl({
+        expect(await importCanvasAssetUrl(auth, {
             workspaceId: 'workspace',
             url: 'url',
             onStart,
@@ -96,7 +96,7 @@ describe('canvas Asset ingest transport', () => {
             url: 'url',
             onStart: () => true,
         }
-        expect(await importCanvasAssetUrl(args)).toEqual({ error: 'Unsupported file' })
+        expect(await importCanvasAssetUrl(auth, args)).toEqual({ error: 'Unsupported file' })
         request.mockResolvedValueOnce({
             ok: true,
             json: async () => ({
@@ -104,6 +104,6 @@ describe('canvas Asset ingest transport', () => {
                 kind: 'unknown',
             }),
         })
-        await expect(importCanvasAssetUrl(args)).rejects.toThrow('INVALID_ASSET_INGEST_REPLY')
+        await expect(importCanvasAssetUrl(auth, args)).rejects.toThrow('INVALID_ASSET_INGEST_REPLY')
     })
 })

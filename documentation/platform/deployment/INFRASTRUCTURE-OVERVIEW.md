@@ -19,7 +19,7 @@ A handful of building blocks recur throughout the deployment. Understanding them
 | **Stack** | A named Pulumi environment (for example `shelby-dev` or `production`). Each stack has its own state and its own AWS resources. One stack = one full copy of Lixpi. |
 | **ECS on Fargate** | AWS's serverless container runtime. Every Lixpi backend service runs as a Fargate task; there are no EC2 instances to manage. |
 | **CloudMap** | AWS service discovery. NATS servers use a **private** CloudMap namespace to find each other inside the VPC, and a Route53 **public** DNS record (managed by a small Lambda sidecar) so browsers can reach them over the internet. |
-| **CloudFront + S3** | The Web UI is a static SPA built into an S3 bucket and served through a global CloudFront distribution. |
+| **CloudFront + S3** | Each browser SPA is built into its own S3 bucket and served through its own global CloudFront distribution. The main UI uses the stack domain; the user portal uses `user-portal.<domain>`. |
 
 {% callout type="note" %}
 **NATS auth callout.** Instead of storing NATS user credentials, the `api` service acts as a live authorization service: NATS asks the API "can this JWT connect?", the API answers, and NATS enforces the answer. This page only names the mechanism — the conceptual model lives in [Authentication](../AUTHENTICATION.md), and the AWS-specific wiring lives in [NATS Cluster](./NATS-CLUSTER.md).
@@ -33,7 +33,8 @@ flowchart TB
     Browser["🌐 Browser"]
 
     subgraph Edge["AWS Edge"]
-        CF["CloudFront<br/>(HTTP/3, global CDN)"]
+        CF["CloudFront<br/>(main UI)"]
+        PortalCF["CloudFront<br/>(user portal)"]
         R53["Route53<br/>(Hosted Zone)"]
         ACM["ACM<br/>(TLS for CloudFront)"]
     end
@@ -56,7 +57,8 @@ flowchart TB
     end
 
     subgraph Storage["AWS Storage & Secrets"]
-        S3["S3<br/>(Web UI bundle)"]
+        S3["S3<br/>(main UI bundle)"]
+        PortalS3["S3<br/>(user portal bundle)"]
         DDB[("DynamoDB<br/>application tables")]
         SM["Secrets Manager<br/>(TLS certs)"]
         SSM["SSM Parameter Store"]
@@ -69,8 +71,11 @@ flowchart TB
 
     Browser -->|HTTPS| CF
     CF --> S3
+    PortalCF --> PortalS3
     R53 -.->|alias| CF
+    R53 -.->|portal alias| PortalCF
     ACM -.->|cert| CF
+    ACM -.->|wildcard cert| PortalCF
 
     Browser -->|WSS :443| NATS1
     Browser -->|WSS :443| NATS2
@@ -104,6 +109,7 @@ flowchart TB
 | Component | AWS Resource | Purpose |
 |-----------|--------------|---------|
 | `web-ui` | S3 + CloudFront | Static SPA served from a global CDN with HTTP/3 |
+| `web-ui-user-portal` | S3 + CloudFront | Independent account-management SPA served from `user-portal.<domain>` |
 | `api` | ECS/Fargate (private subnets) | CRUD, auth callout, DynamoDB access, AND in-process LangGraph LLM workflow (pipeline events, ProseMirror transcript steps, image generation, vendor SDK egress) |
 | `nex` | ECS/Fargate (private subnets, 1 task) | NATS NEX node — runs background workloads (the hourly AI-models sync), writes the `AI_MODELS_LIST` table. See [NEX Execution Engine](./NEX-EXECUTION-ENGINE.md) |
 | `nats` | ECS EC2 daemon service (3 public-subnet instances, one encrypted EBS volume each) | Message bus, three-replica JetStream, and Blob Object Store; clients connect directly |
@@ -134,7 +140,8 @@ infrastructure/pulumi/src/
     ECS-cluster.ts        # Shared Fargate cluster
     NATS-cluster/         # 3-node NATS cluster + service discovery sidecar
     main-api-service.ts   # api service (ECS task) — also hosts the LLM workflow in-process
-    web-ui.ts             # S3 + CloudFront distribution
+    web-ui.ts             # Shared static-SPA resource and main Web UI wrapper
+    web-ui-user-portal.ts # User portal static-SPA wrapper
     db/DynamoDB-tables.ts # DynamoDB table definitions
     dns-records.ts        # Route53 records + hosted zone
     certificate.ts        # ACM certificate for the web domain
@@ -307,9 +314,9 @@ Each service gets a `taskRole` with only the permissions it actually needs:
 **Historical note.** The previous architecture split AI orchestration into a separate `llm-api` Fargate task with its own narrower IAM role (no DynamoDB) so a compromise of the LLM container couldn't touch user data. After the migration to in-process LangGraph TS, the API container is the trust boundary for both. If that trade-off becomes a concern, the LLM module can be split into a separate `llm-workers` ECS service, but the worker subscriptions and internal-service auth registration still need to be implemented. See [`services/api/src/llm/README.md`](../../../services/api/src/llm/README.md).
 {% /callout %}
 
-## Web UI Deployment
+## Web Client Deployment
 
-[`web-ui.ts`](../../../infrastructure/pulumi/src/resources/web-ui.ts) treats the SPA as static assets, not a running service:
+[`web-ui.ts`](../../../infrastructure/pulumi/src/resources/web-ui.ts) provides the shared static-SPA resource. The main UI wrapper creates the apex and `www` aliases, while [`web-ui-user-portal.ts`](../../../infrastructure/pulumi/src/resources/web-ui-user-portal.ts) creates an independent bucket and distribution with only the `user-portal.<domain>` alias. Both are static assets, not running services:
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'noteBkgColor': '#82B2C0', 'noteTextColor': '#1a3a47', 'noteBorderColor': '#5a9aad', 'actorBkg': '#F6C7B3', 'actorBorder': '#d4956a', 'actorTextColor': '#5a3a2a', 'actorLineColor': '#d4956a', 'signalColor': '#d4956a', 'signalTextColor': '#5a3a2a', 'labelBoxBkgColor': '#F6C7B3', 'labelBoxBorderColor': '#d4956a', 'labelTextColor': '#5a3a2a', 'loopTextColor': '#5a3a2a', 'activationBorderColor': '#9DC49D', 'activationBkgColor': '#9DC49D', 'sequenceNumberColor': '#5a3a2a'}}}%%
@@ -353,6 +360,8 @@ Some things to note:
 - **403 and 404 → index.html with 200** — this turns CloudFront into a proper SPA host; client-side routing handles deep links.
 - **HTTP/3 + `PriceClass_All`** — edge locations worldwide, with the latest protocol for low-latency connections.
 - **`VITE_NATS_SERVER` is baked at build time** — the SPA knows which NATS cluster to connect to from the HTML it was served.
+- **Build state is isolated per SPA**: each Docker builder, extracted `dist` directory, S3 bucket, invalidation, and CloudFront distribution has a service-specific name.
+- **Authentication remains one SSO system**: the portal receives its own redirect URI but uses the same Auth0 tenant, client ID, and audience. The Auth0 dashboard must allow the portal callback, logout, and web-origin URLs.
 
 ## DynamoDB
 

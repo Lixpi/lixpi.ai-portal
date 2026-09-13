@@ -6,7 +6,10 @@
         "dev": "vite --host 0.0.0.0",
         "build": "vite build",
         "start": "node --experimental-transform-types ./src/server.ts",
-        "build-and-serve": "pnpm run build && pnpm run start"
+        "build-and-serve": "pnpm run build && pnpm run start",
+        "test": "vitest",
+        "test:ui": "vitest --ui",
+        "test:run": "vitest run"
     },
     "dependencies": {
         "@aws-sdk/client-bedrock": "*",
@@ -24,6 +27,7 @@
         "@lixpi/ui-kit-gentelella": "workspace:*",
         "@lixpi/ui-primitives": "workspace:*",
         "@lixpi/usage-reporter": "workspace:*",
+        "@lixpi/web-client-service-factory": "workspace:*",
         "@nats-io/nats-core": "*",
         "@nats-io/transport-node": "*",
         "cm6-theme-basic-dark": "*",
@@ -33,11 +37,13 @@
         "cm6-theme-material-dark": "*",
         "cm6-theme-nord": "*",
         "cm6-theme-solarized-dark": "*",
-        "cm6-theme-solarized-light": "*",
-        "nanostores": "*"
+        "cm6-theme-solarized-light": "*"
     },
     "devDependencies": {
+        "@vitest/ui": "*",
+        "happy-dom": "*",
         "sass": "*",
-        "vite": "^6"
+        "vite": "^6",
+        "vitest": "*"
     }
 }

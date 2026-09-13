@@ -1,7 +1,7 @@
 #!/bin/sh
 # Universal entrypoint for lixpi-typescript-test-runner.
 #
-# api / web-ui / nex are bind-mounted from their own service directories
+# api / web-ui / web-ui-user-portal / ai-model-registry / nex are bind-mounted from their own service directories
 # (docker compose.typescript-test-runner.yml, included from the root
 # docker compose.yml) — each is fully self-contained, with its own
 # package.json, pnpm-workspace.yaml, and vitest.config.ts, identical to what
@@ -28,6 +28,8 @@
 # Usage (assumes .env is symlinked via ./set-env.sh at the repo root; add
 # --env-file .env.<your-env> to each command instead if you haven't run it):
 #   docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner web-ui
+#   docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner web-ui-user-portal
+#   docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner ai-model-registry
 #   docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner web-ui src/canvas-adapters/workspace-canvas.test.ts
 #   docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner api
 #   docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner nex
@@ -100,7 +102,7 @@ run_shared() {
 }
 
 case "$domain" in
-    api|web-ui|nex|docs-site)
+    api|web-ui|web-ui-user-portal|ai-model-registry|nex|docs-site)
         run_domain "$domain" "$@"
         ;;
     shared)
@@ -109,11 +111,13 @@ case "$domain" in
     all)
         run_domain api
         run_domain web-ui
+        run_domain web-ui-user-portal
+        run_domain ai-model-registry
         run_domain nex
         run_shared
         ;;
     *)
-        echo "Usage: run-tests.sh {api|web-ui|nex|docs-site|shared|all} [vitest args]" >&2
+        echo "Usage: run-tests.sh {api|web-ui|web-ui-user-portal|ai-model-registry|nex|docs-site|shared|all} [vitest args]" >&2
         exit 1
         ;;
 esac

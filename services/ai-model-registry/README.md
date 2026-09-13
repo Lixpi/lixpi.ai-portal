@@ -133,6 +133,13 @@ The service hot reloads. Vite serves the page on 3010 and proxies `/api` to the 
 
 `public/` is build output and is gitignored. Never edit it by hand. The deployed container has no Vite process; the Node server serves the compiled client and the API on port 3010.
 
+Run the browser-client tests and service quality checks through the repository runners:
+
+```bash
+docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-test-runner ai-model-registry
+docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescript-quality-runner ai-model-registry validate
+```
+
 ## Pages
 
 | URL | What it is |
@@ -142,17 +149,17 @@ The service hot reloads. Vite serves the page on 3010 and proxies `/api` to the 
 
 Any other path opens the parameter registry, which is where the service started. Both the Node server and Vite serve `index.html` for a path that is not a file, so a reload or a pasted link lands on the page it names.
 
-The client is built the same way `services/web-ui` is: TypeScript DOM components through the `html` tagged template from `@lixpi/ui-primitives/dom`, Nano Stores for state, a path router that writes the address bar from the route store, and Sass beside each component. The visual system comes from [`@lixpi/ui-kit-gentelella`](../../packages/lixpi/ui-kit-gentelella/README.md), which owns the [Gentelella](https://github.com/ColorlibHQ/gentelella) dependency, complete theme Sass, runtime facades, class contracts, and reusable DOM components. The service composes those modules with registry-specific data, routes, and styles instead of importing Gentelella directly.
+The client uses [`@lixpi/web-client-service-factory`](../../packages/lixpi/web-client-service-factory/README.md) for application mounting, factory-owned routing, route-driven view replacement, base store creation, Vite configuration, and the Sass document foundation. It injects no browser runtime dependencies because this internal client does not authenticate users or connect to NATS. TypeScript DOM components use the `html` tagged template from `@lixpi/ui-primitives/dom`, and registry-specific Sass stays beside each component. The visual system comes from [`@lixpi/ui-kit-gentelella`](../../packages/lixpi/ui-kit-gentelella/README.md), which owns the [Gentelella](https://github.com/ColorlibHQ/gentelella) dependency, complete theme Sass, runtime facades, class contracts, and reusable DOM components.
 
 ```text
 src/client/
-    main.ts                 boot: mount the shell, then start the router
-    app.ts                  mounts the layout
+    main.ts                 creates the shared client lifecycle and configures routing
+    routes.ts               route paths, views, loaders, and navigation metadata
     sass/styles.scss        the theme
-    services/               router and the model-catalog API client
-    stores/                 route and model-catalog state
+    services/               the model-catalog API client
+    stores/                 model-catalog state built on the shared base store
     views/
-        layouts/            sidebar, topbar, and the pane that swaps pages
+        layouts/            sidebar, topbar, and shared route-view outlet
         modelParameters/    the parameter registry page
         modelCatalog/       the model catalog page
 ```

@@ -1,0 +1,34 @@
+{
+    "name": "lixpi-web-ui-user-portal",
+    "private": true,
+    "version": "0.0.1",
+    "type": "module",
+    "scripts": {
+        "dev": "vite --host 0.0.0.0 --mode dev",
+        "build": "vite build --mode production",
+        "serve": "http-server ./dist -p 5173",
+        "build-and-serve": "pnpm run build && pnpm run serve",
+        "preview": "vite preview",
+        "test": "vitest",
+        "test:ui": "vitest --ui",
+        "test:run": "vitest run"
+    },
+    "dependencies": {
+        "@lixpi/auth-client": "workspace:*",
+        "@lixpi/constants": "workspace:*",
+        "@lixpi/nats-service": "workspace:*",
+        "@lixpi/ui-kit-gentelella": "workspace:*",
+        "@lixpi/ui-primitives": "workspace:*",
+        "@lixpi/web-client-service-factory": "workspace:*"
+    },
+    "devDependencies": {
+        "@vitest/ui": "*",
+        "happy-dom": "*",
+        "http-server": "*",
+        "sass": "*",
+        "typescript": "*",
+        "vite": "^6",
+        "vitest": "*"
+    },
+    "packageManager": "pnpm@12.3.4"
+}

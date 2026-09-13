@@ -7,15 +7,13 @@ import {
 } from 'vitest'
 import { NATS_SUBJECTS } from '@lixpi/constants'
 
-import AuthService from '$src/services/auth-service.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
 import { describeMedia } from './media-descriptor-service.ts'
 
 const { MEDIA_DESCRIBE } = NATS_SUBJECTS.AI_INTERACTION_SUBJECTS
 
-vi.mock('$src/services/auth-service.ts', () => ({
-    default: { getTokenSilently: vi.fn() },
-}))
+const getTokenSilently = vi.fn()
+const auth = { getTokenSilently }
 
 vi.mock('$src/stores/servicesStore.ts', () => ({
     servicesStore: { getData: vi.fn() },
@@ -30,7 +28,7 @@ const mockNatsRequest = (response: unknown) => {
 
 beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(AuthService.getTokenSilently).mockResolvedValue('token-1')
+    getTokenSilently.mockResolvedValue('token-1')
     servicesStore.getData.mockReturnValue(undefined as never)
 })
 
@@ -40,13 +38,13 @@ beforeEach(() => {
 describe('media-descriptor-service', () => {
     describe('describeMedia', () => {
         it('returns OFFLINE when the NATS service is missing', async () => {
-            const result = await describeMedia({
+            const result = await describeMedia(auth, {
                 assetId: 'asset-image-1',
             })
 
             expect(result).toEqual({ error: 'OFFLINE' })
             expect(servicesStore.getData).toHaveBeenCalledWith('nats')
-            expect(AuthService.getTokenSilently).not.toHaveBeenCalled()
+            expect(getTokenSilently).not.toHaveBeenCalled()
         })
 
         it('requests MEDIA_DESCRIBE with the asset id and token for image descriptors', async () => {
@@ -54,7 +52,7 @@ describe('media-descriptor-service', () => {
                 summary: 'an image of a robot',
                 entityTags: ['robot'],
             })
-            const result = await describeMedia({
+            const result = await describeMedia(auth, {
                 assetId: 'asset-image-1',
                 aiModel: 'vision-v2',
             })
@@ -74,7 +72,7 @@ describe('media-descriptor-service', () => {
         it('omits an aiModel field when no aiModel is supplied', async () => {
             const request = mockNatsRequest({ summary: 'no model hint needed' })
 
-            await describeMedia({
+            await describeMedia(auth, {
                 assetId: 'asset-image-2',
             })
 

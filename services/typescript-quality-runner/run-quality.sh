@@ -62,39 +62,40 @@ run_oxlint_fixes() {
 # action. Keeping this matrix here makes every domain use identical tool semantics.
 run_action() {
     action="$1"
-    shift
+    source_extension_aliases="$2"
+    shift 2
 
     case "$action" in
         validate)
-            node "$source_extension_runner" check "$@"
+            node "$source_extension_runner" check --aliases "$source_extension_aliases" -- "$@"
             node "$typescript_format_runner" check "$@"
             "$dprint_bin" check --allow-no-files --config "$dprint_config" "$@"
             "$oxlint_bin" --config "$oxlint_config" --no-error-on-unmatched-pattern "$@"
             node "$stylelint_runner" check "$@"
             ;;
         fix)
-            node "$source_extension_runner" fix "$@"
+            node "$source_extension_runner" fix --aliases "$source_extension_aliases" -- "$@"
             run_oxlint_fixes "$@"
             "$dprint_bin" fmt --allow-no-files --config "$dprint_config" "$@"
             node "$stylelint_runner" fix "$@"
             ;;
         lint)
-            node "$source_extension_runner" check "$@"
+            node "$source_extension_runner" check --aliases "$source_extension_aliases" -- "$@"
             "$oxlint_bin" --config "$oxlint_config" --no-error-on-unmatched-pattern "$@"
             node "$stylelint_runner" check "$@"
             ;;
         lint-fix)
-            node "$source_extension_runner" fix "$@"
+            node "$source_extension_runner" fix --aliases "$source_extension_aliases" -- "$@"
             run_oxlint_fixes "$@"
             node "$stylelint_runner" fix "$@"
             ;;
         format)
-            node "$source_extension_runner" fix "$@"
+            node "$source_extension_runner" fix --aliases "$source_extension_aliases" -- "$@"
             node "$typescript_format_runner" fix "$@"
             "$dprint_bin" fmt --allow-no-files --config "$dprint_config" "$@"
             ;;
         validate-formatting)
-            node "$source_extension_runner" check "$@"
+            node "$source_extension_runner" check --aliases "$source_extension_aliases" -- "$@"
             node "$typescript_format_runner" check "$@"
             "$dprint_bin" check --allow-no-files --config "$dprint_config" "$@"
             ;;
@@ -145,6 +146,8 @@ run_shared() {
         ui-kit \
         ui-kit-gentelella \
         ui-primitives \
+        auth-client \
+        web-client-service-factory \
         usage-reporter
     do
         package_name=${package_path%%/*}
@@ -159,7 +162,7 @@ run_shared() {
         exit 1
     fi
 
-    run_action "$action" $selected_paths
+    run_action "$action" '[]' $selected_paths
 }
 
 # Domain aliases are the stable command-line API used by Docker Compose and developer docs.
@@ -170,28 +173,31 @@ run_domain() {
 
     case "$domain" in
         web-ui)
-            run_action "$action" services/web-ui/index.html services/web-ui/src services/web-ui/vite.config.ts services/web-ui/vitest.config.ts
+            run_action "$action" '[{"specifierPrefix":"$src","importerScope":"services/web-ui","targetDirectory":"services/web-ui/src"}]' services/web-ui/index.html services/web-ui/src services/web-ui/vite.config.ts services/web-ui/vitest.config.ts
+            ;;
+        web-ui-user-portal)
+            run_action "$action" '[{"specifierPrefix":"$src","importerScope":"services/web-ui-user-portal","targetDirectory":"services/web-ui-user-portal/src"}]' services/web-ui-user-portal/index.html services/web-ui-user-portal/src services/web-ui-user-portal/vite.config.ts services/web-ui-user-portal/vitest.config.ts
             ;;
         api)
-            run_action "$action" services/api/src services/api/vitest.config.ts
+            run_action "$action" '[]' services/api/src services/api/vitest.config.ts
             ;;
         nex)
-            run_action "$action" services/nex/workloads services/nex/vitest.config.ts
+            run_action "$action" '[]' services/nex/workloads services/nex/vitest.config.ts
             ;;
         ai-model-registry)
-            run_action "$action" services/ai-model-registry/src services/ai-model-registry/vite.config.ts
+            run_action "$action" '[{"specifierPrefix":"$src","importerScope":"services/ai-model-registry","targetDirectory":"services/ai-model-registry/src/client"}]' services/ai-model-registry/src services/ai-model-registry/vite.config.ts services/ai-model-registry/vitest.config.ts
             ;;
         docs-site)
-            run_action "$action" documentation/site/assets
+            run_action "$action" '[]' documentation/site/assets
             ;;
         infrastructure)
-            run_action "$action" infrastructure/init-script/setup-env.ts infrastructure/pulumi/src
+            run_action "$action" '[]' infrastructure/init-script/setup-env.ts infrastructure/pulumi/src
             ;;
         random-useful-things)
-            run_action "$action" random-useful-things
+            run_action "$action" '[]' random-useful-things
             ;;
         quality-runner)
-            run_action "$action" \
+            run_action "$action" '[]' \
                 "$tool_dir/import-specifier-order.ts" \
                 "$tool_dir/lixpi-oxlint-plugin.ts" \
                 "$tool_dir/source-extension-runner.ts" \
@@ -211,17 +217,22 @@ run_domain() {
 # the quality boundary accidentally through a broad repository glob.
 run_all() {
     action="${1:-validate}"
-    run_action "$action" \
+    run_action "$action" '[{"specifierPrefix":"$src","importerScope":"services/web-ui","targetDirectory":"services/web-ui/src"},{"specifierPrefix":"$src","importerScope":"services/web-ui-user-portal","targetDirectory":"services/web-ui-user-portal/src"},{"specifierPrefix":"$src","importerScope":"services/ai-model-registry","targetDirectory":"services/ai-model-registry/src/client"}]' \
         services/web-ui/src \
         services/web-ui/index.html \
         services/web-ui/vite.config.ts \
         services/web-ui/vitest.config.ts \
+        services/web-ui-user-portal/src \
+        services/web-ui-user-portal/index.html \
+        services/web-ui-user-portal/vite.config.ts \
+        services/web-ui-user-portal/vitest.config.ts \
         services/api/src \
         services/api/vitest.config.ts \
         services/nex/workloads \
         services/nex/vitest.config.ts \
         services/ai-model-registry/src \
         services/ai-model-registry/vite.config.ts \
+        services/ai-model-registry/vitest.config.ts \
         documentation/site/assets \
         infrastructure/init-script/setup-env.ts \
         infrastructure/pulumi/src \
@@ -248,6 +259,8 @@ run_all() {
         packages/lixpi/ui-kit \
         packages/lixpi/ui-kit-gentelella \
         packages/lixpi/ui-primitives \
+        packages/lixpi/auth-client \
+        packages/lixpi/web-client-service-factory \
         packages/lixpi/usage-reporter
 }
 
@@ -257,7 +270,7 @@ cd "$repository_dir"
 # that root. The self-test remains a separate explicit action from normal validation.
 domain="${1:-}"
 if [ -z "$domain" ]; then
-    echo "Usage: run-quality.sh {web-ui|api|nex|ai-model-registry|docs-site|infrastructure|random-useful-things|quality-runner|shared|all|self-test} [package] [validate|fix|lint|lint-fix|format|validate-formatting]" >&2
+    echo "Usage: run-quality.sh {web-ui|web-ui-user-portal|api|nex|ai-model-registry|docs-site|infrastructure|random-useful-things|quality-runner|shared|all|self-test} [package] [validate|fix|lint|lint-fix|format|validate-formatting]" >&2
     exit 1
 fi
 shift
@@ -272,7 +285,7 @@ case "$domain" in
     self-test)
         sh "$runner_dir/test-quality.sh"
         ;;
-    web-ui|api|nex|ai-model-registry|docs-site|infrastructure|random-useful-things|quality-runner)
+    web-ui|web-ui-user-portal|api|nex|ai-model-registry|docs-site|infrastructure|random-useful-things|quality-runner)
         run_domain "$domain" "${1:-validate}"
         ;;
     *)

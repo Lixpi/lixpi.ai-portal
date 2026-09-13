@@ -9,13 +9,23 @@ import {
     type CanvasGenerationRequest,
 } from '@lixpi/canvas-components-lixpi-specific/frontend/workspace'
 import { createDocumentHtml } from '@lixpi/ui-primitives/dom'
+import {
+    type AuthClientInstance,
+} from '@lixpi/auth-client'
 import { ProseMirrorEditor } from '$src/components/proseMirror/components/editor.ts'
 import { USE_AI_CHAT_META } from '$src/components/proseMirror/plugins/aiChatThreadPlugin/aiChatThreadPluginConstants.ts'
 import AiInteractionService from '$src/services/ai-interaction-service.ts'
 
 type EditorOptions = ConstructorParameters<typeof ProseMirrorEditor>[0]
 
-export type CanvasConversationEditorIntegration = Pick<EditorOptions, 'promptControlFactories' | 'promptReferencePreviewRenderer' | 'aiChatThreadRenderContext'> & {
+export type CanvasConversationEditorIntegration = Pick<
+    EditorOptions,
+    | 'aiChatThreadRenderContext'
+    | 'assetService'
+    | 'auth'
+    | 'promptControlFactories'
+    | 'promptReferencePreviewRenderer'
+> & {
     register?: (
         threadId: string,
         view: EditorView,
@@ -156,12 +166,17 @@ class CanvasConversationEditorAdapter implements CanvasConversationEditor {
 class CanvasConversationTransportAdapter implements CanvasConversationTransport {
     private readonly service: AiInteractionService
 
-    constructor(options: Parameters<CanvasConversationRunPorts['connect']>[0]) {
+    constructor(
+        auth: AuthClientInstance,
+        options: Parameters<CanvasConversationRunPorts['connect']>[0],
+    ) {
         this.service = new AiInteractionService({
+            auth,
             workspaceId: options.workspaceId,
             organizationId: options.thread.organizationId,
             conversationAssetId: options.thread.threadId,
             onError: options.onError,
+            userStore: auth.userStore,
         })
     }
 
@@ -179,4 +194,7 @@ class CanvasConversationTransportAdapter implements CanvasConversationTransport 
 export const createCanvasConversationEditorPort = (integration: CanvasConversationEditorIntegration): CanvasConversationRunPorts['mountEditor'] =>
     request => new CanvasConversationEditorAdapter(request, integration)
 
-export const createCanvasConversationTransport: CanvasConversationRunPorts['connect'] = options => new CanvasConversationTransportAdapter(options)
+export const createCanvasConversationTransport = (
+    auth: AuthClientInstance,
+    options: Parameters<CanvasConversationRunPorts['connect']>[0],
+): CanvasConversationTransport => new CanvasConversationTransportAdapter(auth, options)

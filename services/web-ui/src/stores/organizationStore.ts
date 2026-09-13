@@ -1,8 +1,7 @@
-import { writable } from '$src/stores/nanoStore.ts'
-
 import {
     type AiModel,
-} from '$src/stores/aiModelsStore.ts'
+} from '@lixpi/constants'
+import { createStore } from '@lixpi/web-client-service-factory'
 
 type Meta = {
     isLoading: boolean
@@ -25,12 +24,12 @@ type Organization = {
     updatedAt: number
 }
 
-type OrganizationStore = {
+type OrganizationStoreState = {
     meta: Meta
     data: Organization
 }
 
-const organization: OrganizationStore = {
+const initialState: OrganizationStoreState = {
     meta: {
         isLoading: false,
         isLoaded: false,
@@ -46,86 +45,47 @@ const organization: OrganizationStore = {
     },
 }
 
-const store = writable(organization)
-
-export const organizationStore = {
-    ...store,
-
-    // Synchronous access for imperative components.
-    getMeta: (key: keyof Meta | null = null): any => {
-        let returnValue: any
-        const unsubscribe = store.subscribe(store => void (returnValue = key ? store.meta[key] : store.meta))
-        unsubscribe()
-
-        return returnValue
-    },
-
-    // Synchronous access for imperative components.
-    getData: (key: keyof Organization | null = null): any => {
-        let returnValue: any
-        const unsubscribe = store.subscribe(store => void (returnValue = key ? store.data[key] : store.data))
-        unsubscribe()
-
-        return returnValue
-    },
-
-    setMetaValues: (values: Partial<Meta> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                meta: {
-                    ...state.meta,
-                    ...values,
-                },
-            }),
-        ),
-
-    setDataValues: (values: Partial<Organization> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: {
-                    ...state.data,
-                    ...values,
-                },
-            }),
-        ),
-
-    addTag: (tags: Record<string, Tag>): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: {
-                    ...state.data,
-                    tags: {
-                        ...state.data.tags,
-                        ...tags,
+export const organizationStore = createStore({
+    initialState,
+    createMethods: store => ({
+        addTag: (tags: Record<string, Tag>): void =>
+            void store.update(
+                state => ({
+                    ...state,
+                    data: {
+                        ...state.data,
+                        tags: [
+                            ...state.data.tags,
+                            ...structuredClone(
+                                Object.values(tags),
+                            ),
+                        ],
                     },
-                },
-            }),
-        ),
-
-    updateTag: (updatedTag: Tag): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: {
-                    ...state.data,
-                    tags: state.data.tags.map(tag => tag.tagId === updatedTag.tagId ? updatedTag : tag),
-                },
-            }),
-        ),
-
-    removeTag: (tagId: string): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: {
-                    ...state.data,
-                    tags: state.data.tags.filter(tag => tag.tagId !== tagId),
-                },
-            }),
-        ),
-
-    resetStore: (): void => void store.set(organization),
-}
+                }),
+            ),
+        updateTag: (updatedTag: Tag): void =>
+            void store.update(
+                state => ({
+                    ...state,
+                    data: {
+                        ...state.data,
+                        tags: state.data.tags.map(
+                            tag => tag.tagId === updatedTag.tagId
+                                ? structuredClone(updatedTag)
+                                : tag,
+                        ),
+                    },
+                }),
+            ),
+        removeTag: (tagId: string): void =>
+            void store.update(
+                state => ({
+                    ...state,
+                    data: {
+                        ...state.data,
+                        tags: state.data.tags.filter(tag => tag.tagId !== tagId),
+                    },
+                }),
+            ),
+    }),
+})

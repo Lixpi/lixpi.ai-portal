@@ -10,6 +10,9 @@ import {
     type EditorView,
 } from 'prosemirror-view'
 import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
+import {
     BubbleMenu,
     type BubbleMenuPositionRequest,
 } from '@lixpi/ui-kit/components/bubble-menu'
@@ -41,6 +44,7 @@ const resolvedPositionHasNodeType = (
 }
 
 type BubbleMenuViewOptions = {
+    auth?: AuthTokenProvider
     view: EditorView
 }
 
@@ -56,14 +60,21 @@ class BubbleMenuView {
     private currentContext: SelectionContext = 'none'
     private activeImageWrapper: HTMLElement | null = null
 
-    constructor({ view }: BubbleMenuViewOptions) {
+    constructor({
+        auth,
+        view,
+    }: BubbleMenuViewOptions) {
         this.view = view
         this.debounceDelay = isTouchDevice() ? 350 : 200
 
         const {
             items,
             linkInputPanel,
-        } = buildBubbleMenuItems(this.view, this)
+        } = buildBubbleMenuItems(
+            this.view,
+            this,
+            auth,
+        )
         this.menuItems = items
         this.linkInputPanel = linkInputPanel
 
@@ -530,11 +541,14 @@ class BubbleMenuView {
     }
 }
 
-export const bubbleMenuPlugin = (): Plugin => {
+export const bubbleMenuPlugin = (auth?: AuthTokenProvider): Plugin => {
     return new Plugin({
         key: bubbleMenuPluginKey,
         view(editorView: EditorView) {
-            return new BubbleMenuView({ view: editorView })
+            return new BubbleMenuView({
+                auth,
+                view: editorView,
+            })
         },
     })
 }

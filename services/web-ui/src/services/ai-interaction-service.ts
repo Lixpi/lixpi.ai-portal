@@ -18,11 +18,13 @@ import {
     type VideoGenerationTrace,
     type WorkspaceContextResolution,
 } from '@lixpi/constants'
-import AuthService from '$src/services/auth-service.ts'
+import {
+    type AuthTokenProvider,
+    type UserStateStore,
+} from '@lixpi/auth-client'
 import SegmentsReceiver from '$src/services/segmentsReceiver-service.ts'
 
 import { servicesStore } from '$src/stores/servicesStore.ts'
-import { userStore } from '$src/stores/userStore.ts'
 import { toCapabilityRunEventSegment } from '$src/services/capability-run-stream.ts'
 
 const { AI_INTERACTION_SUBJECTS } = NATS_SUBJECTS
@@ -110,19 +112,24 @@ type StopAiChatMessageResult = {
 }
 
 type AiInteractionServiceOptions = {
+    auth: AuthTokenProvider
     workspaceId: string
     conversationAssetId: string
     organizationId?: string
     onError?: (error: unknown) => void
+    userStore: UserStateStore
 }
 
-export const stopAiChatMessageForThread = async ({
-    workspaceId,
-    conversationAssetId,
-    generationRequestId,
-}: StopAiChatMessageTarget): Promise<StopAiChatMessageResult> => {
+export const stopAiChatMessageForThread = async (
+    auth: AuthTokenProvider,
+    {
+        workspaceId,
+        conversationAssetId,
+        generationRequestId,
+    }: StopAiChatMessageTarget,
+): Promise<StopAiChatMessageResult> => {
     const payload = {
-        token: await AuthService.getTokenSilently(),
+        token: await auth.getTokenSilently(),
         workspaceId,
         conversationAssetId,
         ...(generationRequestId ? { generationRequestId } : {}),
@@ -137,13 +144,14 @@ export const stopAiChatMessageForThread = async ({
 }
 
 const requestMediaGenerationAction = async <T>(
+    auth: AuthTokenProvider,
     subject: string,
     payload: Record<string, unknown>,
 ): Promise<T> => {
     const result = (await servicesStore.getData('nats')!.request(
         subject,
         {
-            token: await AuthService.getTokenSilently(),
+            token: await auth.getTokenSilently(),
             ...payload,
         },
     )) as T | { error: string }
@@ -158,37 +166,61 @@ const requestMediaGenerationAction = async <T>(
     return result as T
 }
 
-export const resolveMediaGenerationReference = async (payload: {
-    generationRequestId: string
-    workspaceId: string
-    requestRevision: number
-    bindingId: string
-    assetId: string
-}): Promise<unknown> => await requestMediaGenerationAction(AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.RESOLVE_REFERENCE, payload)
+export const resolveMediaGenerationReference = async (
+    auth: AuthTokenProvider,
+    payload: {
+        generationRequestId: string
+        workspaceId: string
+        requestRevision: number
+        bindingId: string
+        assetId: string
+    },
+): Promise<unknown> => await requestMediaGenerationAction(
+    auth,
+    AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.RESOLVE_REFERENCE,
+    payload,
+)
 
-export const cancelMediaGenerationRequest = async (payload: {
-    generationRequestId: string
-    workspaceId: string
-    requestRevision: number
-}): Promise<unknown> => await requestMediaGenerationAction(AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.CANCEL, payload)
+export const cancelMediaGenerationRequest = async (
+    auth: AuthTokenProvider,
+    payload: {
+        generationRequestId: string
+        workspaceId: string
+        requestRevision: number
+    },
+): Promise<unknown> => await requestMediaGenerationAction(
+    auth,
+    AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.CANCEL,
+    payload,
+)
 
-export const startMediaGenerationVerification = async (payload: {
-    generationRequestId: string
-    workspaceId: string
-    requestRevision: number
-    generationRun: number
-    assetId: string
-}): Promise<{
+export const startMediaGenerationVerification = async (
+    auth: AuthTokenProvider,
+    payload: {
+        generationRequestId: string
+        workspaceId: string
+        requestRevision: number
+        generationRun: number
+        assetId: string
+    },
+): Promise<{
     verificationUrl: string
     expiresAt: number
     requestRevision: number
-}> => await requestMediaGenerationAction(AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.VERIFICATION_START, payload)
+}> => await requestMediaGenerationAction(
+    auth,
+    AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.VERIFICATION_START,
+    payload,
+)
 
-export const getMediaGenerationRequest = async (payload: {
-    generationRequestId: string
-    workspaceId: string
-    includeCheckpoint?: boolean
-}): Promise<{
+export const getMediaGenerationRequest = async (
+    auth: AuthTokenProvider,
+    payload: {
+        generationRequestId: string
+        workspaceId: string
+        includeCheckpoint?: boolean
+    },
+): Promise<{
     request: MediaGenerationRequest
     checkpoint?: {
         promptDocument: unknown
@@ -200,13 +232,20 @@ export const getMediaGenerationRequest = async (payload: {
         configuration: unknown
     }
     liveSubject: string
-}> => await requestMediaGenerationAction(AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.GET, payload)
+}> => await requestMediaGenerationAction(
+    auth,
+    AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.GET,
+    payload,
+)
 
-export const replayMediaGenerationRequest = async (payload: {
-    generationRequestId: string
-    workspaceId: string
-    startStreamSequence?: number
-}): Promise<{
+export const replayMediaGenerationRequest = async (
+    auth: AuthTokenProvider,
+    payload: {
+        generationRequestId: string
+        workspaceId: string
+        startStreamSequence?: number
+    },
+): Promise<{
     request: MediaGenerationRequest
     liveSubject: string
     replay: {
@@ -216,7 +255,11 @@ export const replayMediaGenerationRequest = async (payload: {
         }>
         hasMore: boolean
     }
-}> => await requestMediaGenerationAction(AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.REPLAY, payload)
+}> => await requestMediaGenerationAction(
+    auth,
+    AI_INTERACTION_SUBJECTS.MEDIA_GENERATION_REQUEST.REPLAY,
+    payload,
+)
 
 export default class AiInteractionService {
     workspaceId: string
@@ -231,13 +274,18 @@ export default class AiInteractionService {
     private responseSubscription: { unsubscribe: () => void } | null = null
     private subscriptionRevision = 0
     private disconnected = false
+    private readonly auth: AuthTokenProvider
+    private readonly userStore: UserStateStore
 
     constructor({
+        auth,
         workspaceId,
         conversationAssetId,
         organizationId,
         onError,
+        userStore,
     }: AiInteractionServiceOptions) {
+        this.auth = auth
         this.workspaceId = workspaceId
         this.conversationAssetId = conversationAssetId
         this.organizationId = organizationId ?? ''
@@ -247,6 +295,7 @@ export default class AiInteractionService {
         this.pipelineEventIds = new Set()
         this.pipelineLocalStreamSeq = 0
         this.onError = onError ?? null
+        this.userStore = userStore
 
         this.initNatsSubscriptions()
     }
@@ -271,7 +320,7 @@ export default class AiInteractionService {
 
     getChatResponseSubject(): string {
         return getAiInteractionResponseSubject(
-            userStore.getData('userId') as string,
+            this.userStore.getData('userId') as string,
             this.organizationId,
             this.conversationAssetId,
         )
@@ -360,7 +409,7 @@ export default class AiInteractionService {
             let hasMore = false
 
             do {
-                const token = await AuthService.getTokenSilently()
+                const token = await this.auth.getTokenSilently()
 
                 if (
                     this.disconnected
@@ -802,7 +851,7 @@ export default class AiInteractionService {
         workspaceContextSnapshot,
         canvasVisibleArea,
     }: SendChatMessageOptions) {
-        const user = userStore.getData()
+        const user = this.userStore.getData()
 
         // When a section flag is omitted, infer multi-model mode from the model
         // count; otherwise multi off collapses the section to its first model.
@@ -821,7 +870,7 @@ export default class AiInteractionService {
         const videoModelIds = mediaGenerationMode === 'image' ? [] : selectedVideoModelIds
 
         const payload: Record<string, any> = {
-            token: await AuthService.getTokenSilently(),
+            token: await this.auth.getTokenSilently(),
             workspaceId: this.workspaceId,
             conversationAssetId: this.conversationAssetId,
             aiReasoningModels: reasoningModelIds,
@@ -961,10 +1010,13 @@ export default class AiInteractionService {
     }
 
     async stopChatMessage(): Promise<void> {
-        await stopAiChatMessageForThread({
-            workspaceId: this.workspaceId,
-            conversationAssetId: this.conversationAssetId,
-        })
+        await stopAiChatMessageForThread(
+            this.auth,
+            {
+                workspaceId: this.workspaceId,
+                conversationAssetId: this.conversationAssetId,
+            },
+        )
     }
 
     disconnect() {

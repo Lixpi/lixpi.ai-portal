@@ -1,0 +1,23 @@
+{
+    "name": "@lixpi/auth-client",
+    "version": "0.0.1",
+    "private": true,
+    "type": "module",
+    "main": "./src/index.ts",
+    "scripts": {
+        "test:run": "vitest run"
+    },
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "dependencies": {
+        "@auth0/auth0-spa-js": "*",
+        "@lixpi/constants": "workspace:*",
+        "@lixpi/ui-primitives": "workspace:*",
+        "@lixpi/web-client-service-factory": "workspace:*"
+    },
+    "devDependencies": {
+        "happy-dom": "*",
+        "vitest": "*"
+    }
+}

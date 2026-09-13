@@ -39,12 +39,20 @@ import {
 import {
     type PromptReferencePreviewRenderer,
 } from '@lixpi/canvas-components-lixpi-specific/frontend/context'
+import {
+    type AuthClientInstance,
+} from '@lixpi/auth-client'
 
 import { buildKeymap } from '$src/components/proseMirror/components/keyMap.ts'
 import { buildInputRules } from '$src/components/proseMirror/components/inputRules.ts'
 import { ProseMirrorAuthorityService } from '$src/services/prosemirror-authority-service.ts'
+import {
+    type AssetService,
+} from '$src/services/asset-service.ts'
 
 type ProseMirrorEditorConfig = {
+    assetService: AssetService
+    auth: AuthClientInstance
     editorMountElement: HTMLElement
     content: HTMLElement
     initialVal?: any
@@ -79,6 +87,8 @@ export class ProseMirrorEditor {
     proseMirrorAuthority: ProseMirrorAuthorityService | null = null
 
     constructor({
+        assetService,
+        auth,
         editorMountElement,
         content,
         initialVal = {},
@@ -102,6 +112,8 @@ export class ProseMirrorEditor {
         plugins = [],
         enablePromptReferences = false,
     }: ProseMirrorEditorConfig) {
+        this.assetService = assetService
+        this.auth = auth
         this.onEditorChange = onEditorChange
         this.onStreamingUpdate = onStreamingUpdate
         this.onStreamEvent = onStreamEvent
@@ -118,7 +130,12 @@ export class ProseMirrorEditor {
         this.readOnly = readOnly || Boolean(proseMirrorAuthority && !proseMirrorAuthority.receiveOnly)
         this.aiChatThreadRenderContext = {
             ...(aiChatThreadRenderContext ?? {}),
+            auth,
             readOnly,
+            traceDetailsOptions: {
+                auth,
+                ...(aiChatThreadRenderContext?.traceDetailsOptions ?? {}),
+            },
             // Capability run traces render Asset and Capability handles with the
             // same hover cards prompt references use, so the chat thread needs
             // the same resolver the prompt-reference node views get.
@@ -148,9 +165,12 @@ export class ProseMirrorEditor {
             const onLeaseStateChange = this.proseMirrorAuthorityOptions.onLeaseStateChange
             this.proseMirrorAuthority = new ProseMirrorAuthorityService({
                 ...this.proseMirrorAuthorityOptions,
+                assetService: this.assetService,
+                auth: this.auth,
                 getView: () => this.editorView,
                 onRemoteDocumentChange: value => this.dispatchStreamingUpdate(value),
                 onLeaseStateChange: state => this.handleLeaseStateChange(state, onLeaseStateChange),
+                userStore: this.auth.userStore,
             })
         }
     }
@@ -245,7 +265,7 @@ export class ProseMirrorEditor {
                 && this.promptReferenceCatalog
             )
                 registeredPlugins.push(
-                    createAtPromptReferencePickerPlugin(this.promptReferenceCatalog),
+                    createAtPromptReferencePickerPlugin(this.auth, this.promptReferenceCatalog),
                 )
 
             return registeredPlugins
@@ -261,9 +281,9 @@ export class ProseMirrorEditor {
             focusPlugin(
                 this.updateEditorFocusState.bind(this),
             ), // Allows to enable editor if it was disabled and user clicks on the editor area
-            bubbleMenuPlugin(),
+            bubbleMenuPlugin(this.auth),
             linkTooltipPlugin(),
-            imageSelectionPlugin(),
+            imageSelectionPlugin(this.auth),
             createPromptReferenceNodeViewPlugin(this.promptReferencePreviewRenderer),
             buildInputRules(this.editorSchema),
             keymap(
@@ -302,8 +322,8 @@ export class ProseMirrorEditor {
         if (this.documentType === DOCUMENT_TYPE.AI_PROMPT_INPUT) {
             if (this.promptReferenceCatalog) {
                 basePlugins.push(
-                    createAtPromptReferencePickerPlugin(this.promptReferenceCatalog),
-                    createSlashCapabilityModulePickerPlugin(this.promptReferenceCatalog),
+                    createAtPromptReferencePickerPlugin(this.auth, this.promptReferenceCatalog),
+                    createSlashCapabilityModulePickerPlugin(this.auth, this.promptReferenceCatalog),
                 )
             }
 

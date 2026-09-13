@@ -10,6 +10,8 @@ packages:
   - "packages/lixpi/test-utils"
   - "packages/lixpi/ui-kit"
   - "packages/lixpi/ui-primitives"
+  - "packages/lixpi/auth-client"
+  - "packages/lixpi/web-client-service-factory"
 
 allowBuilds:
   "@parcel/watcher": true

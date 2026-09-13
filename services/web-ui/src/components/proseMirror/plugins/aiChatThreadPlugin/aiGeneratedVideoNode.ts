@@ -10,7 +10,9 @@ import {
     buildAssetRenditionPath,
     resolveAuthenticatedMediaUrl,
 } from '$src/utils/mediaUrls.ts'
-import AuthService from '$src/services/auth-service.ts'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 import { settings } from '$src/settings.ts'
 import { NodeSelection } from 'prosemirror-state'
 // @ts-ignore - runtime import
@@ -42,12 +44,15 @@ export {
     aiGeneratedVideoNodeType,
 }
 
-const buildAuthenticatedUrl = async (url: string): Promise<string> => {
+const buildAuthenticatedUrl = async (
+    auth: AuthTokenProvider | undefined,
+    url: string,
+): Promise<string> => {
     return resolveAuthenticatedMediaUrl(
         url,
         {
             apiBaseUrl: import.meta.env.VITE_API_URL || '',
-            getAuthToken: () => AuthService.getTokenSilently(),
+            getAuthToken: () => auth?.getTokenSilently() ?? Promise.resolve(false),
         },
     )
 }
@@ -56,6 +61,7 @@ export const aiGeneratedVideoNodeView = (
     node: any,
     view: any,
     getPos: () => number | undefined,
+    auth?: AuthTokenProvider,
 ) => {
     const normalizeScale = (value: number): number => Number.isFinite(
         Number(value),
@@ -308,9 +314,9 @@ export const aiGeneratedVideoNodeView = (
         applyStyle(videoElement, { display: 'block' })
         applyStyle(controlsHost, { display: 'block' })
 
-        const resolvedVideoSrc = await buildAuthenticatedUrl(videoSource)
+        const resolvedVideoSrc = await buildAuthenticatedUrl(auth, videoSource)
         const posterSource = posterUrl || (assetId ? buildAssetRenditionPath(assetId, 'poster') : '')
-        const resolvedPosterSrc = posterSource ? await buildAuthenticatedUrl(posterSource) : ''
+        const resolvedPosterSrc = posterSource ? await buildAuthenticatedUrl(auth, posterSource) : ''
 
         if (videoElement.src !== resolvedVideoSrc)
             videoElement.src = resolvedVideoSrc

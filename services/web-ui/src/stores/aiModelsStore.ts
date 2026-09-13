@@ -1,5 +1,3 @@
-import { writable } from '$src/stores/nanoStore.ts'
-
 import {
     LoadingStatus,
     type AiModel,
@@ -9,18 +7,16 @@ import {
     type DefaultAiModelSelection,
     type MediaGenerationConfigMatrix,
 } from '@lixpi/constants'
+import { createStore } from '@lixpi/web-client-service-factory'
 
 type Meta = {
     loadingStatus: LoadingStatus
 }
 
-// Define the aiModels object with the types
-type AiModelsStore = {
+type AiModelsStoreState = {
     meta: Meta
     data: AiModel[]
     mediaGenerationConfigMatrix: MediaGenerationConfigMatrix
-    // API-projected default model selection per capability (configured in
-    // the AI Model Registry). Empty ids mean "no configured default".
     defaultModels: DefaultAiModelSelection
 }
 
@@ -30,7 +26,7 @@ const emptyDefaultModels: DefaultAiModelSelection = {
     video: '' as AiModelId,
 }
 
-const aiModels: AiModelsStore = {
+const initialState: AiModelsStoreState = {
     meta: {
         loadingStatus: LoadingStatus.idle,
     },
@@ -39,98 +35,41 @@ const aiModels: AiModelsStore = {
         version: 'media-generation-config-matrix-v1',
         groups: [],
     },
-    defaultModels: { ...emptyDefaultModels },
+    defaultModels: emptyDefaultModels,
 }
 
-const store = writable(aiModels)
-
-export const aiModelsStore = {
-    ...store,
-
-    // Synchronous access for imperative components.
-    getMeta: (key: keyof Meta | null = null): any => {
-        let returnValue: any
-        const unsubscribe = store.subscribe(store => void (returnValue = key ? store.meta[key] : store.meta))
-        unsubscribe()
-
-        return returnValue
-    },
-
-    // Synchronous access for imperative components.
-    getData: (key: keyof AiModel | null = null): any => {
-        let returnValue: any
-        const unsubscribe = store.subscribe(store => void (returnValue = key ? store.data[key] : store.data))
-        unsubscribe()
-
-        return returnValue
-    },
-
-    getMediaGenerationConfigMatrix: (): MediaGenerationConfigMatrix => {
-        let returnValue: MediaGenerationConfigMatrix = aiModels.mediaGenerationConfigMatrix
-        const unsubscribe = store.subscribe(store => void (returnValue = store.mediaGenerationConfigMatrix))
-        unsubscribe()
-
-        return returnValue
-    },
-
-    // Returns the API-configured default model id for a capability, or '' when
-    // none is configured. Used to pre-select model dropdowns.
-    getDefaultModelId: (capability: DefaultAiModelCapability): AiModelId => {
-        let returnValue: AiModelId = aiModels.defaultModels[capability]
-        const unsubscribe = store.subscribe(store => void (returnValue = store.defaultModels[capability]))
-        unsubscribe()
-
-        return returnValue
-    },
-
-    setMetaValues: (values: Partial<Meta> = {}): void =>
-        void store.update(
-            state => ({
-                ...state,
-                meta: {
-                    ...state.meta,
-                    ...values,
-                },
-            }),
-        ),
-
-    addAiModels: (aiModels: AiModel[] = []): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: [
-                    ...aiModels,
-                    ...state.data,
-                ],
-            }),
-        ),
-
-    setAiModels: (aiModels: AiModel[] = []): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: [
-                    ...aiModels,
-                ],
-                mediaGenerationConfigMatrix: {
-                    version: 'media-generation-config-matrix-v1',
-                    groups: [],
-                },
-                defaultModels: { ...emptyDefaultModels },
-            }),
-        ),
-
-    setAiModelsCatalog: (catalog: AiModelsCatalogResponse): void =>
-        void store.update(
-            state => ({
-                ...state,
-                data: [
-                    ...(catalog.models as AiModel[]),
-                ],
-                mediaGenerationConfigMatrix: catalog.mediaGenerationConfigMatrix ?? aiModels.mediaGenerationConfigMatrix,
-                defaultModels: catalog.defaultModels ?? { ...emptyDefaultModels },
-            }),
-        ),
-
-    resetStore: (): void => void store.set(aiModels),
-}
+export const aiModelsStore = createStore({
+    initialState,
+    createMethods: store => ({
+        getMediaGenerationConfigMatrix: (): MediaGenerationConfigMatrix => store.get().mediaGenerationConfigMatrix,
+        getDefaultModelId: (capability: DefaultAiModelCapability): AiModelId => store.get().defaultModels[capability],
+        addAiModels: (models: AiModel[] = []): void =>
+            void store.update(
+                state => ({
+                    ...state,
+                    data: [
+                        ...structuredClone(models),
+                        ...state.data,
+                    ],
+                }),
+            ),
+        setAiModels: (models: AiModel[] = []): void =>
+            void store.update(
+                state => ({
+                    ...state,
+                    data: structuredClone(models),
+                    mediaGenerationConfigMatrix: structuredClone(initialState.mediaGenerationConfigMatrix),
+                    defaultModels: structuredClone(emptyDefaultModels),
+                }),
+            ),
+        setAiModelsCatalog: (catalog: AiModelsCatalogResponse): void =>
+            void store.update(
+                state => ({
+                    ...state,
+                    data: structuredClone(catalog.models as AiModel[]),
+                    mediaGenerationConfigMatrix: structuredClone(catalog.mediaGenerationConfigMatrix ?? initialState.mediaGenerationConfigMatrix),
+                    defaultModels: structuredClone(catalog.defaultModels ?? emptyDefaultModels),
+                }),
+            ),
+    }),
+})

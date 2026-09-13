@@ -9,8 +9,12 @@ import {
     type CanvasVersion,
     type WorkspaceCanvasSnapshot,
 } from '@lixpi/canvas-components-lixpi-specific/shared'
-import AuthService from '$src/services/auth-service.ts'
-import RouterService from '$src/services/router-service.ts'
+import {
+    type WebClientRouterService,
+} from '@lixpi/web-client-service-factory'
+import {
+    type AuthTokenProvider,
+} from '@lixpi/auth-client'
 import { WORKSPACE_ROUTE_LOAD_REQUEST_TIMEOUT_MS } from '$src/services/requestTimeouts.ts'
 import { servicesStore } from '$src/stores/servicesStore.ts'
 import { workspaceStore } from '$src/stores/workspaceStore.ts'
@@ -36,15 +40,26 @@ const version = (
     }
 }
 
-const ownsActiveStore = (workspaceId: string): boolean => {
-    return workspaceStore.getData('workspaceId') === workspaceId
-        && RouterService.getRouteParams().workspaceId === workspaceId
+type WorkspacePersistenceConfig = {
+    auth: AuthTokenProvider
+    router: Pick<WebClientRouterService, 'getRouteParams'>
 }
 
-export const createWorkspacePersistencePorts = (): CanvasPersistencePorts => {
+const ownsActiveStore = (
+    workspaceId: string,
+    router: WorkspacePersistenceConfig['router'],
+): boolean => {
+    return workspaceStore.getData('workspaceId') === workspaceId
+        && router.getRouteParams().workspaceId === workspaceId
+}
+
+export const createWorkspacePersistencePorts = ({
+    auth,
+    router,
+}: WorkspacePersistenceConfig): CanvasPersistencePorts => {
     return {
         read: workspaceId => {
-            if (!ownsActiveStore(workspaceId))
+            if (!ownsActiveStore(workspaceId, router))
                 return null
 
             return {
@@ -61,7 +76,7 @@ export const createWorkspacePersistencePorts = (): CanvasPersistencePorts => {
             const result: CanvasStateUpdateResponse = await servicesStore.getData('nats')!.request(
                 NATS_SUBJECTS.WORKSPACE_SUBJECTS.UPDATE_CANVAS_STATE,
                 {
-                    token: await AuthService.getTokenSilently(),
+                    token: await auth.getTokenSilently(),
                     workspaceId: request.workspaceId,
                     canvasState: request.canvasState,
                     ...(request.persistViewport ? { persistViewport: true } : {}),
@@ -94,7 +109,7 @@ export const createWorkspacePersistencePorts = (): CanvasPersistencePorts => {
             const result: Workspace & { error?: string } = await servicesStore.getData('nats')!.request(
                 NATS_SUBJECTS.WORKSPACE_SUBJECTS.GET_WORKSPACE,
                 {
-                    token: await AuthService.getTokenSilently(),
+                    token: await auth.getTokenSilently(),
                     workspaceId,
                 },
                 WORKSPACE_ROUTE_LOAD_REQUEST_TIMEOUT_MS,
@@ -117,7 +132,7 @@ export const createWorkspacePersistencePorts = (): CanvasPersistencePorts => {
             if (typeof publication.version?.updatedAt === 'number')
                 workspacesStore.updateWorkspace(publication.workspaceId, { updatedAt: publication.version.updatedAt })
 
-            if (!ownsActiveStore(publication.workspaceId))
+            if (!ownsActiveStore(publication.workspaceId, router))
                 return
 
             if (publication.canvasState)

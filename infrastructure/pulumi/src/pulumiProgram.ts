@@ -18,6 +18,7 @@ import {
     getOrCreateHostedZone,
 } from './resources/dns-records.ts'
 import { createWebUI } from './resources/web-ui.ts'
+import { createWebUIUserPortal } from './resources/web-ui-user-portal.ts'
 import { formatStageResourceName } from '@lixpi/constants'
 import {
     createLambdaCertificateManager,
@@ -83,6 +84,27 @@ const {
     VITE_STRIPE_PUBLIC_KEY,
     VITE_NATS_SERVER,
 } = process.env
+
+const includeWebClientOrigins = (
+    configuredOrigins: string | undefined,
+    domainName: string,
+): string => {
+    const parsedOrigins = JSON.parse(configuredOrigins || '[]') as unknown
+
+    if (
+        !Array.isArray(parsedOrigins)
+        || parsedOrigins.some(origin => typeof origin !== 'string')
+    )
+        throw new Error('NATS_ALLOWED_ORIGINS must be a JSON array of origin strings')
+
+    return JSON.stringify([
+        ...new Set([
+            ...parsedOrigins,
+            `https://${domainName}`,
+            `https://user-portal.${domainName}`,
+        ]),
+    ])
+}
 
 export const createInfrastructure = async () => {
     // Decide whether to deploy full AWS infra or use local-only resources
@@ -311,7 +333,9 @@ export const createInfrastructure = async () => {
             NATS_AUTH_XKEY_ISSUER_PUBLIC: NATS_AUTH_XKEY_ISSUER_PUBLIC!,
             NATS_NEX_NODE_NKEY_PUBLIC: NATS_NEX_NODE_NKEY_PUBLIC!,
             NATS_SAME_ORIGIN: NATS_SAME_ORIGIN!,
-            NATS_ALLOWED_ORIGINS: NATS_ALLOWED_ORIGINS || '[]',
+            NATS_ALLOWED_ORIGINS: DEPLOY_TO_AWS
+                ? includeWebClientOrigins(NATS_ALLOWED_ORIGINS, DOMAIN_NAME!)
+                : NATS_ALLOWED_ORIGINS || '[]',
             NATS_DEBUG_MODE: NATS_DEBUG_MODE!,
             NATS_TRACE_MODE: NATS_TRACE_MODE!,
         },
@@ -521,6 +545,27 @@ export const createInfrastructure = async () => {
         dockerfilePath: '/usr/src/service/services/web-ui/Dockerfile',
     })
 
+    const userPortalDomainName = `user-portal.${DOMAIN_NAME!}`
+    const webUIUserPortal = await createWebUIUserPortal({
+        orgName: ORG_NAME!,
+        stage: STAGE!,
+        domainName: userPortalDomainName,
+        hostedZoneId: hostedZoneId as unknown as string,
+        hostedZoneName: HOSTED_ZONE_NAME || DOMAIN_NAME!,
+        certificateArn: certificateResources.outputs.validatedCertificateArn,
+        environment: {
+            VITE_API_URL: VITE_API_URL!,
+            VITE_AUTH0_LOGIN_URL: `https://${userPortalDomainName}`,
+            VITE_AUTH0_DOMAIN: VITE_AUTH0_DOMAIN!,
+            VITE_AUTH0_CLIENT_ID: VITE_AUTH0_CLIENT_ID!,
+            VITE_AUTH0_AUDIENCE: VITE_AUTH0_AUDIENCE!,
+            VITE_AUTH0_REDIRECT_URI: `https://${userPortalDomainName}`,
+            VITE_NATS_SERVER: VITE_NATS_SERVER!,
+        },
+        dockerBuildContext: '/usr/src/service',
+        dockerfilePath: '/usr/src/service/services/web-ui-user-portal/Dockerfile',
+    })
+
     // Create DNS records after the services are created
     const dnsRecords = pulumi.all([
         hostedZoneId,
@@ -528,12 +573,18 @@ export const createInfrastructure = async () => {
         webUI.outputs.distributionDomainName,
         webUI.outputs.distributionHostedZoneId,
         webUI.outputs.wwwDomainName,
+        webUIUserPortal.outputs.domainName,
+        webUIUserPortal.outputs.distributionDomainName,
+        webUIUserPortal.outputs.distributionHostedZoneId,
     ]).apply(async ([
         currentHostedZoneId,
         webDomainName,
         webDistDns,
         webDistZoneId,
         webWwwDomainName,
+        portalDomainName,
+        portalDistDns,
+        portalDistZoneId,
     ]) => {
         return await createDnsRecords({
             orgName: ORG_NAME!,
@@ -563,6 +614,15 @@ export const createInfrastructure = async () => {
                         evaluateTargetHealth: false,
                     },
                 },
+                {
+                    name: portalDomainName,
+                    type: 'A',
+                    alias: {
+                        name: portalDistDns,
+                        zoneId: portalDistZoneId,
+                        evaluateTargetHealth: false,
+                    },
+                },
             ],
             serviceName: 'Lixpi-AI',
         })
@@ -579,6 +639,7 @@ export const createInfrastructure = async () => {
         nexNodeService,
         aiModelRegistryService,
         webUI,
+        webUIUserPortal,
         certificateResources,
         dnsRecords,
         cloudMapNamespace,
