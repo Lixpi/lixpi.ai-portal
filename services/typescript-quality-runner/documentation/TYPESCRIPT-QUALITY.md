@@ -95,6 +95,8 @@ docker compose --profile dev --profile main run --rm --no-deps -T lixpi-typescri
 
 The fixture test proves the named-import matrix, native TypeScript execution, Sass four-space formatting, configured Oxlint violations, configured Stylelint violations, shared transition enforcement, React import rejection, and JSX source-file rejection.
 
+`Object.assign` is prohibited by `lixpi/no-object-assign`, and its fix rewrites calls as object spread. A fresh object-literal target becomes a spread literal, and `Object.assign({}, ...list)` becomes a spread `reduce`. A standalone statement that merges into a variable or property becomes `target = { ...target, ...source }`, with object-literal sources inlined and a single-declarator `const` binding changed to `let`. The rule reports an error with no fix when the returned object is used directly, such as an `Error` or mock decorated inside an expression or a class instance passed as an argument, when the target is a DOM `style` object, or when the binding can't be reassigned.
+
 An object literal holding more than one property is split one property to a line, the same way a named import list is. `lixpi/prefer-multiline-object` reports an inline one and its fix expands it, nested literals included. A literal with a single property or none stays inline.
 
 ## Named Import And Export Layout
@@ -171,6 +173,17 @@ docker compose --profile dev --profile main build lixpi-ai-model-registry
 [`docker-compose.typescript-quality-runner.yml`](../../../docker-compose.typescript-quality-runner.yml) defines a separate one-shot service. Its command dispatcher mirrors the test runner, so a normal edit checks or formats only the selected service or package. Source paths are mounted selectively under `/usr/src/repository`; the repository root and package manifests are never bind-mounted there. Tool manifests, scripts, configuration, and wrappers are mounted separately under `/usr/src/quality-runner`, while tool dependencies use named Docker volumes. This prevents pnpm from writing installation artifacts into the host checkout.
 
 dprint uses the `typescript-quality-runner-dprint-cache` volume for its compiled plugins and incremental file-state cache. pnpm uses `typescript-quality-runner-pnpm-store`, and both the tool workspace and its local debug-tools workspace have dedicated `node_modules` volumes. Oxlint and Stylelint receive only the selected domain paths. The formatter, import/export, Oxlint-plugin, and Stylelint wrappers are erasable TypeScript files executed directly by Node 24's stable type stripping; there is no generated JavaScript copy.
+
+The runner's TypeScript lives under `src/`, grouped by tool:
+
+| Directory | Contents |
+|-----------|----------|
+| `src/oxlint/` | `plugin.ts` registers the `lixpi/*` rules. Each rule is its own file in a subdirectory named for what it checks: `imports`, `comments`, `functions`, `conditions`, `statements`, `objects`, `d3`, `logging`, and `tooling`. Helpers used by more than one rule live in `shared/`. |
+| `src/formatting/` | The Oxfmt-backed TypeScript and HTML formatter and the import/export layout checker. |
+| `src/stylelint/` | The Stylelint runner and the `lixpi` Stylelint plugin. |
+| `src/source-extensions/` | The source-extension checker and JavaScript-to-TypeScript migration. |
+
+Compose mounts `src/` as one directory, so adding a rule file needs no Compose change. Register the rule in `src/oxlint/plugin.ts` and enable it in `oxlint.json`.
 
 All linter and formatter configuration lives beside this documentation: [`oxfmt.json`](../oxfmt.json), [`dprint.json`](../dprint.json), [`oxlint.json`](../oxlint.json), and [`stylelint.config.ts`](../stylelint.config.ts). The wildcard package manifest is resolved without a lockfile on every invocation. There is no TypeScript build step and the tools do not emit JavaScript.
 

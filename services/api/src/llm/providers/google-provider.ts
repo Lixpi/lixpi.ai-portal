@@ -1048,7 +1048,7 @@ export class GoogleProvider extends BaseProvider {
         if (!prompt)
             throw new Error('VEO: missing prompt in user message')
 
-        const veoConfig: Record<string, any> = {
+        let veoConfig: Record<string, any> = {
             numberOfVideos: 1,
             abortSignal: this.signal,
         }
@@ -1144,9 +1144,9 @@ export class GoogleProvider extends BaseProvider {
             || configuredRegionProfile === 'standard'
             ? configuredRegionProfile
             : undefined
-        Object.assign(
-            veoConfig,
-            this.deps.mediaProviderDefinition.moderation.settings(
+        veoConfig = {
+            ...veoConfig,
+            ...this.deps.mediaProviderDefinition.moderation.settings(
                 modelVersion,
                 usesImageConditioning
                     ? 'image-conditioned'
@@ -1155,7 +1155,7 @@ export class GoogleProvider extends BaseProvider {
                         : 'text',
                 regionProfile ? { regionProfile } : undefined,
             ),
-        )
+        }
 
         info(
             `[Google:${this.instanceKey}] VEO submit ${

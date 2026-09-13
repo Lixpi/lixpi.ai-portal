@@ -180,7 +180,10 @@ export const registerStyleExtractionActions = (
                     const axisExtractions = asRecord(update.axisExtractions)
 
                     if (axisExtractions)
-                        Object.assign(state.axisExtractions, axisExtractions)
+                        state.axisExtractions = {
+                            ...state.axisExtractions,
+                            ...axisExtractions,
+                        }
 
                     if (Array.isArray(update.failedAxes))
                         state.failedAxes.push(...update.failedAxes)

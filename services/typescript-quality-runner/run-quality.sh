@@ -9,9 +9,9 @@ tool_dir="/usr/src/quality-runner"
 runner_dir="$tool_dir"
 dprint_bin="$tool_dir/node_modules/.bin/dprint"
 oxlint_bin="$tool_dir/node_modules/.bin/oxlint"
-source_extension_runner="$tool_dir/source-extension-runner.ts"
-typescript_format_runner="$tool_dir/typescript-format-runner.ts"
-stylelint_runner="$tool_dir/stylelint-runner.ts"
+source_extension_runner="$tool_dir/src/source-extensions/source-extension-runner.ts"
+typescript_format_runner="$tool_dir/src/formatting/typescript-format-runner.ts"
+stylelint_runner="$tool_dir/src/stylelint/runner.ts"
 dprint_config="$tool_dir/dprint.json"
 oxlint_config="$repository_dir/.oxlintrc.json"
 
@@ -198,13 +198,8 @@ run_domain() {
             ;;
         quality-runner)
             run_action "$action" '[]' \
-                "$tool_dir/import-specifier-order.ts" \
-                "$tool_dir/lixpi-oxlint-plugin.ts" \
-                "$tool_dir/source-extension-runner.ts" \
-                "$tool_dir/stylelint.config.ts" \
-                "$tool_dir/stylelint-lixpi-plugin.ts" \
-                "$tool_dir/stylelint-runner.ts" \
-                "$tool_dir/typescript-format-runner.ts"
+                "$tool_dir/src" \
+                "$tool_dir/stylelint.config.ts"
             ;;
         *)
             echo "Unknown domain: $domain" >&2
@@ -237,13 +232,8 @@ run_all() {
         infrastructure/init-script/setup-env.ts \
         infrastructure/pulumi/src \
         random-useful-things \
-        "$tool_dir/import-specifier-order.ts" \
-        "$tool_dir/lixpi-oxlint-plugin.ts" \
-        "$tool_dir/source-extension-runner.ts" \
+        "$tool_dir/src" \
         "$tool_dir/stylelint.config.ts" \
-        "$tool_dir/stylelint-lixpi-plugin.ts" \
-        "$tool_dir/stylelint-runner.ts" \
-        "$tool_dir/typescript-format-runner.ts" \
         packages/lixpi/auth-service \
         packages/lixpi/capability-system \
         packages/lixpi/canvas-engine \
