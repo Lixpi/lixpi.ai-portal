@@ -1076,9 +1076,11 @@ export class CanvasController {
         this.extensions.set(extension.id, dispose)
 
         try {
-            extension.mount(
-                Object.assign(context, { overlayRoot: context.contentRoot }),
-            ),
+            scope.own(
+                extension.mount(
+                    Object.assign(context, { overlayRoot: context.contentRoot }),
+                ),
+            )
         } catch (error) {
             dispose()
 
