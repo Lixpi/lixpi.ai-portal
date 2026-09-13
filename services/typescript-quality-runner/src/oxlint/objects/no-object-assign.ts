@@ -87,6 +87,7 @@ const findVariable = (
 // literal, a statement that mutates a reference becomes a spread reassignment, and a
 // `const` binding of that reference becomes `let`. Calls whose returned object is used
 // with a non-literal target, such as decorating an Error or a mock, are reported.
+// Writes onto an element's `style` are allowed.
 export const noObjectAssign = defineRule({
     meta: {
         type: 'suggestion',
@@ -110,6 +111,15 @@ export const noObjectAssign = defineRule({
                     !node.typeArguments
                     && sourceCode.getCommentsInside(node).length === 0
                 )
+
+                // An element's CSSStyleDeclaration can't be replaced by a new object, and
+                // Object.assign is the idiomatic way to write several properties onto it.
+                if (
+                    target?.type === 'MemberExpression'
+                    && !target.computed
+                    && target.property.name === 'style'
+                )
+                    return
 
                 if (target?.type === 'ObjectExpression') {
                     const literalProperties = target.properties.every(property => property.type === 'SpreadElement' || property.kind === 'init')

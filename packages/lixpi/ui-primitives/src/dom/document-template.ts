@@ -1,7 +1,5 @@
 import htm from 'htm/mini'
 
-import { applyStyle } from './domTemplates.ts'
-
 export type DocumentElementProperties = Record<string, unknown> & {
     class?: string
     className?: string
@@ -51,7 +49,7 @@ class DocumentTemplateBuilder {
                 key === 'style'
                 && typeof value === 'object'
             ) {
-                applyStyle(element, value as Partial<CSSStyleDeclaration>)
+                Object.assign(element.style, value)
 
                 continue
             }

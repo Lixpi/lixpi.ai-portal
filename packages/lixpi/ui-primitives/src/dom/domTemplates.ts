@@ -56,7 +56,7 @@ class DOMTemplateBuilder {
 
                     break
                 case key === 'style' && typeof value === 'object':
-                    applyStyle(element, value as StyleObject)
+                    Object.assign(element.style, value as StyleObject)
 
                     break
                 case key === 'data' && typeof value === 'object':
@@ -122,9 +122,4 @@ export const createEl = templateBuilder.getCreateElementFunction()
 export const applyStyle = (
     element: HTMLElement | SVGElement,
     styles: StyleObject,
-): void => {
-    // A CSSStyleDeclaration is owned by its element and can't be replaced by a new object,
-    // so each property is written onto it.
-    for (const [property, value] of Object.entries(styles))
-        (element.style as unknown as Record<string, unknown>)[property] = value
-}
+): void => void Object.assign(element.style, styles)

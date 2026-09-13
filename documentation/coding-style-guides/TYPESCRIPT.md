@@ -120,7 +120,7 @@ interface UserProfile {
 - Keep each level of a nested conditional expression visibly nested. Indent a nested `?` and `:` one level beyond its parent conditional. Do not flatten multiple conditional levels into one operator column or add parentheses that erase the indentation hierarchy.
 - Declare or assign each value in a separate statement. Comma-separated variable declarations and comma sequence expressions are prohibited.
 - Preserve deliberately expanded function parameters, function arguments, types, arrays, objects, logical expressions, conditional expressions, and method chains. Formatting must not flatten those structures just because they fit under the print width.
-- Use object spread instead of `Object.assign`. Merge into a variable or property with `target = { ...target, ...source }`. The TypeScript quality runner's `lixpi/no-object-assign` rule rewrites convertible calls and rejects the rest.
+- Use object spread instead of `Object.assign`. Merge into a variable or property with `target = { ...target, ...source }`. The TypeScript quality runner's `lixpi/no-object-assign` rule rewrites convertible calls and rejects the rest. Writing onto an element's `style` with `Object.assign` is allowed.
 - Object destructuring with more than one property is multiline, with one property per line.
 - `Map`, `Set`, `WeakMap`, and `WeakSet` initializers with more than one value are multiline, with one value per line. Any other collection that is already expanded stays expanded.
 - A D3 or SVG chain with more than one `.attr()` call is multiline, with one chained call per line.
