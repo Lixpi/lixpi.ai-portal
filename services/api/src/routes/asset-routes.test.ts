@@ -30,12 +30,13 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock('express', () => ({ Router: vi.fn(() => mocks.router) }))
-vi.mock('multer', () => ({
-    default: Object.assign(
-        vi.fn(() => ({ single: vi.fn(() => 'upload-middleware') })),
-        { memoryStorage: vi.fn(() => 'memory-storage') },
-    ),
-}))
+// Multer's default export is a callable factory that also carries storage builders.
+vi.mock('multer', () => {
+    const multer: ReturnType<typeof vi.fn> & { memoryStorage?: ReturnType<typeof vi.fn> } = vi.fn(() => ({ single: vi.fn(() => 'upload-middleware') }))
+    multer.memoryStorage = vi.fn(() => 'memory-storage')
+
+    return { default: multer }
+})
 vi.mock('@lixpi/nats-service', () => ({ default: { getInstance: vi.fn() } }))
 vi.mock('../helpers/auth.ts', () => ({ jwtVerifier: { verify: mocks.verifyJwt } }))
 vi.mock('../models/asset.ts', () => ({ default: { get: mocks.getAsset } }))

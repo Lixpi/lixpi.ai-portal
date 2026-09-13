@@ -12,6 +12,7 @@ import {
     info as debugInfo,
     warn as debugWarn,
 } from '@lixpi/debug-tools'
+import { TransactionCanceledException } from '@aws-sdk/client-dynamodb'
 
 import DynamoDBService, { isTransactionConditionalCheckFailure } from './dynamodb-service.ts'
 
@@ -947,8 +948,9 @@ describe('DynamoDBService', () => {
 
         it('suppresses logging for conditional-check cancellations when asked', async () => {
             const service = new DynamoDBService({ region: 'us-east-1' })
-            const error = Object.assign(new Error('cancelled'), {
-                name: 'TransactionCanceledException',
+            const error = new TransactionCanceledException({
+                message: 'cancelled',
+                $metadata: {},
                 CancellationReasons: [{ Code: 'ConditionalCheckFailed' }, { Code: 'None' }],
             })
             const sendMock = vi.fn().mockRejectedValue(error)

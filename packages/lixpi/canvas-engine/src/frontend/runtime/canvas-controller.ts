@@ -1077,9 +1077,7 @@ export class CanvasController {
 
         try {
             scope.own(
-                extension.mount(
-                    Object.assign(context, { overlayRoot: context.contentRoot }),
-                ),
+                extension.mount(context),
             )
         } catch (error) {
             dispose()

@@ -37,7 +37,13 @@ const mocks = vi.hoisted(() => {
         })),
     }
 
-    const express = vi.fn(() => app)
+    // Express's default export is a callable factory that also carries middleware builders.
+    const express: ReturnType<typeof vi.fn> & {
+        json?: typeof expressJson
+        urlencoded?: typeof expressUrlencoded
+    } = vi.fn(() => app)
+    express.json = expressJson
+    express.urlencoded = expressUrlencoded
 
     const cors = vi.fn()
     const cookieParser = vi.fn()
@@ -184,10 +190,7 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock('express', () => ({
-    default: Object.assign(mocks.express, {
-        json: mocks.expressJson,
-        urlencoded: mocks.expressUrlencoded,
-    }),
+    default: mocks.express,
 }))
 vi.mock('cors', () => ({
     default: mocks.cors,

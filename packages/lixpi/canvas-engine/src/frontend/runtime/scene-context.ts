@@ -52,6 +52,10 @@ export class SceneContext implements ComponentContext {
     get signal() {
         return this.drawing.signal
     }
+    // Canvas extensions mount their overlays into the context's own content root.
+    get overlayRoot() {
+        return this.contentRoot
+    }
     requestFrame: ComponentContext['requestFrame'] = callback => this.drawing.requestFrame(callback)
     invalidate: ComponentContext['invalidate'] = bounds => this.drawing.invalidate(bounds)
 

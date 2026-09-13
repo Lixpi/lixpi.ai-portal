@@ -56,6 +56,19 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+// Carries the provider's operation error code to callers alongside the readable reason.
+class VeoOperationError extends Error {
+    readonly code?: string
+
+    constructor(
+        message: string,
+        code: string | undefined,
+    ) {
+        super(message)
+        this.code = code
+    }
+}
+
 type VeoImageInput = {
     imageBytes: string
     mimeType: string
@@ -1287,12 +1300,7 @@ export class GoogleProvider extends BaseProvider {
                     ? opErr?.code ?? opErr?.status
                     : undefined
 
-                throw Object.assign(
-                    new Error(`VEO operation error: ${providerReason}`),
-                    {
-                        ...(providerCode !== undefined ? { code: String(providerCode) } : {}),
-                    },
-                )
+                throw new VeoOperationError(`VEO operation error: ${providerReason}`, providerCode !== undefined ? String(providerCode) : undefined)
             }
 
             const video = operation.response?.generatedVideos?.[0]?.video

@@ -113,12 +113,15 @@ describe('installed Action Timeline frontend', () => {
         const createAssetReferenceView = vi.fn(({
             assetId,
             variant,
-        }) => ({
-            dom: Object.assign(document.createElement('span'), {
-                textContent: `${variant}:${assetId}`,
-            }),
-            destroy: vi.fn(),
-        }))
+        }) => {
+            const dom = document.createElement('span')
+            dom.textContent = `${variant}:${assetId}`
+
+            return {
+                dom,
+                destroy: vi.fn(),
+            }
+        })
         const timeline = buildActionTimelineDocument(
             {
                 durationMs: 1000,

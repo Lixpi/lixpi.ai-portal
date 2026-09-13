@@ -11,6 +11,16 @@ import {
     vi,
 } from 'vitest'
 
+// DynamoDB reports a failed per-item transaction condition as a cancelled transaction.
+class TransactionCanceledError extends Error {
+    readonly CancellationReasons = [{ Code: 'ConditionalCheckFailed' }]
+
+    constructor(message: string) {
+        super(message)
+        this.name = 'TransactionCanceledException'
+    }
+}
+
 const mocks = vi.hoisted(() => ({
     assertAssetComponents: vi.fn(),
     attachWorkspaceReference: vi.fn(),
@@ -455,10 +465,7 @@ describe('attachGeneratedAssetNode', () => {
     it('re-reads and reprojects after a concurrent attachment wins the workspace condition', async () => {
         vi.useFakeTimers()
         vi.setSystemTime(100)
-        const conditionalFailure = Object.assign(new Error('stale'), {
-            name: 'TransactionCanceledException',
-            CancellationReasons: [{ Code: 'ConditionalCheckFailed' }],
-        })
+        const conditionalFailure = new TransactionCanceledError('stale')
         mocks.getAssetRecord.mockResolvedValue(asset(false))
         mocks.getWorkspace
             .mockResolvedValueOnce({

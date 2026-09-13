@@ -19,6 +19,19 @@ import {
     MediaGenerationRequestEventLog,
 } from './media-generation-request-event-log.ts'
 
+// A JetStream lookup failure carrying the numeric code the purge path treats as missing.
+class JetStreamLookupError extends Error {
+    readonly code: number
+
+    constructor(
+        message: string,
+        code: number,
+    ) {
+        super(message)
+        this.code = code
+    }
+}
+
 const event = (sequence: number): MediaGenerationRequestEvent => ({
     eventId: `event-${sequence}`,
     generationRequestId: 'request-1',
@@ -211,7 +224,7 @@ describe('MediaGenerationRequestEventLog', () => {
 
     it('purges request events idempotently after their retention condition', async () => {
         const purgeJetStreamSubject = vi.fn(async () => {
-            throw Object.assign(new Error('no stream'), { code: 404 })
+            throw new JetStreamLookupError('no stream', 404)
         })
         const log = new MediaGenerationRequestEventLog({ purgeJetStreamSubject } as any)
 

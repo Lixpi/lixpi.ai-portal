@@ -17,11 +17,16 @@ const dynamo = {
 
 // Transactions surface a failed per-item condition as a cancelled transaction,
 // not as ConditionalCheckFailedException.
-const transactionalConditionalFailure = (message: string) =>
-    Object.assign(new Error(message), {
-        name: 'TransactionCanceledException',
-        CancellationReasons: [{ Code: 'ConditionalCheckFailed' }, { Code: 'None' }],
-    })
+class TransactionCanceledError extends Error {
+    readonly CancellationReasons = [{ Code: 'ConditionalCheckFailed' }, { Code: 'None' }]
+
+    constructor(message: string) {
+        super(message)
+        this.name = 'TransactionCanceledException'
+    }
+}
+
+const transactionalConditionalFailure = (message: string) => new TransactionCanceledError(message)
 
 beforeEach(() => {
     vi.useRealTimers()
